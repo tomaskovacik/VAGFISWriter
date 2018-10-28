@@ -28,7 +28,6 @@ It is necessary to pause between bytes of approximately 80-100us. And also to pa
 Unfortunately, in this mode, it is not possible to control the transmitted data. A slave may simply not accept the package, and the master will not know about it.
 */
 #include "VAGFISWriter.h"
-//#include <MemoryFree.h>
 #include <Arduino.h>
 
 // #define ENABLE_IRQ 1

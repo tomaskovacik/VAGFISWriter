@@ -41,7 +41,6 @@ void sendRawData(uint8_t data[]);
     void displayOff();
     void displayBlank();
     void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,uint8_t data[],uint8_t mode);
-    void printFreeMem();
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, uint8_t data[],uint8_t mode,uint8_t offset);
     private:
 
