@@ -106,10 +106,24 @@ void VAGFISWriter::sendMsg(String line1, String line2, bool center) {
   if (tx_array[18] == 32 && !center) tx_array[18] = 28; // set last char to 28 if not center
   tx_array[19] = (char)checksum((uint8_t*)tx_array);
 
-  sendRawMsg(tx_array);
+  sendRawData(tx_array);
 
 }
 #endif
+
+//for compatibility with FICuntrol
+void VAGFISWriter::sendStringFS(int x, int y, String line) {
+  line.toUpperCase();
+  tx_array[0] = 0x56; // command to set text-display in FIS
+  tx_array[1] = line.length() + 4; // Length of this message (command and this length not counted
+  tx_array[2] = 0x26; // unsure what this is (was 26)
+  tx_array[3] = x;
+  tx_array[4] = y;
+  line.toCharArray(&tx_array[5], line.length() + 1);
+//checksum is calculated inside sendRawData function
+//  tx_array[line.length() + 5] = (char)checksum((uint8_t*)tx_array);
+  sendRawData(tx_array);
+}
 
 void VAGFISWriter::sendMsg(char msg[]) {
   // build tx_array
@@ -120,9 +134,9 @@ void VAGFISWriter::sendMsg(char msg[]) {
   for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
     tx_array[3 + i] = msg[i];
   }
-  //tx_array[19] = (char)checksum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawMsg() while sending data out
+  //tx_array[19] = (char)checksum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
 
-  sendRawMsg(tx_array);
+  sendRawData(tx_array);
 }
 
 void VAGFISWriter::initScreen(uint8_t mode,uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1) {
@@ -169,7 +183,7 @@ To switch from the graphical mode to the standard one, you must send the initial
 
 */
 
-uint8_t myArray[7] = {0x53,0x06,mode,X,Y,X1,Y1};
+char myArray[7] = {0x53,0x06,mode,X,Y,X1,Y1};
 
 /*
   tx_array[0] = 0x53; // ID
@@ -182,6 +196,17 @@ uint8_t myArray[7] = {0x53,0x06,mode,X,Y,X1,Y1};
 */
   sendRawData(myArray);
 
+}
+
+
+void VAGFISWriter::reset(uint8_t mode){
+	VAGFISWriter::initScreen(mode,0,0,1,1);
+}
+void VAGFISWriter::initMiddleScreen(uint8_t mode){
+	VAGFISWriter::initScreen(mode,0,27,64,48);
+}
+void VAGFISWriter::initFullScreen(uint8_t mode){
+	VAGFISWriter::initScreen(mode,0,0,64,88);
 }
 
 
@@ -473,7 +498,7 @@ z is empty
     tx_array[5 + i] = msg[i];
   }
 
-  sendRawMsg(tx_array);
+  sendRawData(tx_array);
 }
 
 /*
@@ -511,7 +536,7 @@ xx ----> checksum
 */
 
 void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,uint8_t data[],uint8_t mode,uint8_t offset){
-uint8_t myArray[size+5];
+char myArray[size+5];
 myArray[0] = 0x55;
 myArray[1] = size+4;
 myArray[2] = mode;
@@ -524,7 +549,7 @@ for (uint16_t a=0;a<size;a++){
 sendRawData(myArray);
 }
 
-void VAGFISWriter::sendRawData(uint8_t data[]){
+void VAGFISWriter::sendRawData(char data[]){
 
 #ifdef ENABLE_IRQ
   cli();
@@ -581,9 +606,9 @@ delay(5);
    Prepare and send Text-Message
 
 */
-void VAGFISWriter::sendRawMsg(char in_msg[]) {
-  FIS_WRITE_send_3LB_msg(in_msg);
-}
+/*void VAGFISWriter::sendRawMsg(char in_msg[]) {
+sendRawData(in_msg);
+}*/
 
 /**
 
@@ -642,10 +667,10 @@ void VAGFISWriter::sendKeepAliveMsg() {
 }
 
 void VAGFISWriter::displayOff() {
-  sendRawMsg((char*)off);
+  sendRawData((char*)off);
 }
 void VAGFISWriter::displayBlank() {
-  sendRawMsg((char*)blank);
+  sendRawData((char*)blank);
 }
 
 /**
