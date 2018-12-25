@@ -81,20 +81,12 @@ void VAGFISWriter::begin() {
 
 static char tx_array[25];
 
-#ifdef USE_STRINGS
-void VAGFISWriter::sendMsg(String line1, String line2, bool center) {
+void VAGFISWriter::sendString(String line1, String line2, bool center) {
+	line1.toUpperCase();
+	line2.toUpperCase();
   // fill lines to 8 chars
   while (line1.length() < 8) line1 += " ";
   while (line2.length() < 8) line2 += " ";
-  /*
-    Serial.print("[");
-    Serial.print(line1);
-    Serial.print("]");
-    Serial.print("[");
-    Serial.print(line2);
-    Serial.println("]");
-    Serial.println("f");
-  */
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS
   tx_array[1] = 18; // Length of this message (command and this length not counted
@@ -109,7 +101,6 @@ void VAGFISWriter::sendMsg(String line1, String line2, bool center) {
   sendRawData(tx_array);
 
 }
-#endif
 
 //for compatibility with FICuntrol
 void VAGFISWriter::sendStringFS(int x, int y, String line) {
