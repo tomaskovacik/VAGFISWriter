@@ -1,8 +1,8 @@
 VAGFISWriter	KEYWORD1
 begin KEYWORD2
 sendMsg	KEYWORD2
+sendString KEYWORD2
 sendMsgFS	KEYWORD2
-writeStringFS	KEYWORD2
 initScreen	KEYWORD2
 initMiddleScreen	KEYWORD2
 initFullScreen	KEYWORD2
