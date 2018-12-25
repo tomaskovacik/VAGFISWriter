@@ -81,20 +81,12 @@ void VAGFISWriter::begin() {
 
 static char tx_array[25];
 
-#ifdef USE_STRINGS
-void VAGFISWriter::sendMsg(String line1, String line2, bool center) {
+void VAGFISWriter::sendString(String line1, String line2, bool center) {
+	line1.toUpperCase();
+	line2.toUpperCase();
   // fill lines to 8 chars
   while (line1.length() < 8) line1 += " ";
   while (line2.length() < 8) line2 += " ";
-  /*
-    Serial.print("[");
-    Serial.print(line1);
-    Serial.print("]");
-    Serial.print("[");
-    Serial.print(line2);
-    Serial.println("]");
-    Serial.println("f");
-  */
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS
   tx_array[1] = 18; // Length of this message (command and this length not counted
@@ -109,7 +101,6 @@ void VAGFISWriter::sendMsg(String line1, String line2, bool center) {
   sendRawData(tx_array);
 
 }
-#endif
 
 //for compatibility with FICuntrol
 void VAGFISWriter::sendStringFS(int x, int y, String line) {
@@ -135,7 +126,6 @@ void VAGFISWriter::sendMsg(char msg[]) {
     tx_array[3 + i] = msg[i];
   }
   //tx_array[19] = (char)checksum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
-
   sendRawData(tx_array);
 }
 
@@ -275,72 +265,6 @@ eg:
 
 standard font - can fit ~ 10.5 characters, height 7 pixels
 compressed font - holds ~ 14.5 characters, height 7 pixels
-
-
-
-splay text |
-----------------
-
-The text is displayed only after initialization and only in the initialized area of ​​the screen.
-
-Format of the package:
-
-56 CN SS XX YY bb bb bb bb bb bb xx
-
-Where:
-
-56 ----> ID
-
-CN ----> Number of bytes
-
-CC ----> font parameters (see below):
-
-XX ----> start X output coordinate
-
-YY ----> Start Y Output Coordinate
-
-bb ----> ASCII data (count can be different, allowable characters see below)
-
-xx ----> checksum
-
-
-Font settings:
-
-bit 0 -
-0 = negative
-1 = positive
-bit 1 -
-0 = output as XOR with output area
-1 = normal output (the output area is completely wiped with text)
-bit 2 -
-0 = normal font
-1 = compressed font
-bit 3 -
-0 = no special characters
-1 = special characters
-bit 5 -
-0 = left alignment
-1 = center alignment
-
-eg:
-0x00 - standard font, negative, left aligned
-0x01 - standard font, positive, left aligned
-0x04 - compressed font, negative, left aligned
-0x05 - compressed font, positive, left-aligned
-0x08 - special characters, negative, left aligned
-0x09 - special characters, positive, left aligned
-0x20 - standard font, negative, centered
-0x21 - standard font, positive, centered
-0x24 - compressed font, negative, centered
-0x25 - compressed font, positive, centered
-0x28 - special characters, positive, centered
-0x29 - special characters, negative, centered
-
-
-standard font - can fit ~ 10.5 characters, height 7 pixels
-compressed font - holds ~ 14.5 characters, height 7 pixels
-
-
 
 Valid characters:
 

@@ -31,8 +31,8 @@ class VAGFISWriter
     ~VAGFISWriter();
     void begin();
 
-// void sendMsg(String line1, String line2, bool center=true);
     void sendMsg(char msg[]);
+ void sendString(String line1="", String line2="", bool center=true);
 void sendStringFS(int x, int y, String line);
     void sendMsgFS(uint8_t X,uint8_t Y,uint8_t font,uint8_t size,char msg[]);
     void initScreen(uint8_t mode,uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1);
