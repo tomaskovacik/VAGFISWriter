@@ -120,7 +120,7 @@ void VAGFISWriter::sendMsg(char msg[]) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
   tx_array[1] = 18; // Length of this message (command and this length not counted
-  tx_array[2] = 240; // unsure what this is, this is 0x0F = 0xFF ^ 0xF0, same ID as in radio message...
+  tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... if for text
 
   for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
     tx_array[3 + i] = msg[i];
@@ -426,9 +426,9 @@ z is empty
 }
 
 /*
-----------------
-| Graph Output |
-----------------
+------------------
+| Graphic Output |
+------------------
 
 The output is available only after the screen is initialized and only in the initialized area.
 
@@ -461,6 +461,7 @@ xx ----> checksum
 
 void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,uint8_t data[],uint8_t mode,uint8_t offset){
 char myArray[size+5];
+
 myArray[0] = 0x55;
 myArray[1] = size+4;
 myArray[2] = mode;
@@ -471,6 +472,7 @@ for (uint16_t a=0;a<size;a++){
 }
 
 sendRawData(myArray);
+
 }
 
 void VAGFISWriter::sendRawData(char data[]){
@@ -512,17 +514,15 @@ delay(2);
 void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, uint8_t data[],uint8_t mode){
 // 22x32bytes = 704 
 uint8_t packet_size = (sizex+7)/8; // how much byte per packet
-//Serial.println(packet_size);
-for (uint8_t line = 0;line<sizey;line++){
-//Serial.println(line);
-uint8_t _data[packet_size];
-for (uint8_t i=0;i<packet_size;i++){
-        _data[i]=data[(line*packet_size)+i];
-}
-GraphicOut(x,line+y,packet_size,_data,mode,0);
-delay(5);
-
-}
+	
+	for (uint8_t line = 0;line<sizey;line++){
+		uint8_t _data[packet_size];
+		for (uint8_t i=0;i<packet_size;i++){
+		        _data[i]=data[(line*packet_size)+i];
+		}
+		GraphicOut(x,line+y,packet_size,_data,mode,0);
+		delay(5);
+	}
 }
 
 /**
@@ -712,3 +712,4 @@ delayMicroseconds(50);
   }
 
 }
+
