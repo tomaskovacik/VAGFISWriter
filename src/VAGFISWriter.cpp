@@ -90,7 +90,7 @@ void VAGFISWriter::sendString(String line1, String line2, bool center) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS
   tx_array[1] = 18; // Length of this message (command and this length not counted
-  tx_array[2] = 240; // unsure what this is
+  tx_array[2] = 0xF0; //radio text id 
 
   line1.toCharArray(&tx_array[3], 9);
   if (tx_array[10] == 32 && !center) tx_array[10] = 28; // set last char to 28 if not center
@@ -107,7 +107,7 @@ void VAGFISWriter::sendStringFS(int x, int y, String line) {
   line.toUpperCase();
   tx_array[0] = 0x56; // command to set text-display in FIS
   tx_array[1] = line.length() + 4; // Length of this message (command and this length not counted
-  tx_array[2] = 0x26; // unsure what this is (was 26)
+  tx_array[2] = 0x26; // unsure what this is (was 26), probably ID for TEXT message
   tx_array[3] = x;
   tx_array[4] = y;
   line.toCharArray(&tx_array[5], line.length() + 1);
@@ -120,7 +120,7 @@ void VAGFISWriter::sendMsg(char msg[]) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
   tx_array[1] = 18; // Length of this message (command and this length not counted
-  tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... if for text
+  tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
 
   for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
     tx_array[3 + i] = msg[i];
