@@ -40,7 +40,7 @@ class VAGFISWriter
     void initMiddleScreen(uint8_t mode = 0x82);
     void initFullScreen(uint8_t mode = 0x82);
     //void sendRawMsg(char in_msg[]);
-    void sendRawData(char data[]);
+    uint8_t sendRawData(char data[]);
     void sendKeepAliveMsg();
     void displayOff();
     void displayBlank();
@@ -52,18 +52,17 @@ class VAGFISWriter
     uint8_t _FIS_WRITE_DATA;
     uint8_t _FIS_WRITE_ENA;
 
-    void FIS_WRITE_send_3LB_msg(char in_msg[]);
-    void FIS_WRITE_send_3LB_singleByteCommand(uint8_t txByte);
+    uint8_t sendSingleByteCommand(uint8_t txByte);
     void sendEnablePulse();
-    void FIS_WRITE_3LB_sendByte(uint8_t in_byte);
-    void FIS_WRITE_startENA();
-    void FIS_WRITE_stopENA();
+    void sendByte(uint8_t in_byte);
+    void startENA();
+    void stopENA();
     void setClockHigh();
     void setClockLow();
     void setDataHigh();
     void setDataLow();
-    void waitEnaHigh();
-    uint8_t checksum( volatile uint8_t in_msg[]);
+    uint8_t waitEnaHigh();
+    uint8_t checkSum( volatile uint8_t in_msg[]);
 
 };
 

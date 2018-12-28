@@ -57,33 +57,21 @@ VAGFISWriter::~VAGFISWriter()
 
 */
 void VAGFISWriter::begin() {
-  // set port signals
-  pinMode(_FIS_WRITE_ENA, OUTPUT);
-  digitalWrite(_FIS_WRITE_ENA, LOW);
-  FIS_WRITE_stopENA();
+//pinMode(5,OUTPUT);
+  stopENA();
   pinMode(_FIS_WRITE_CLK, OUTPUT);
   setClockHigh();
   pinMode(_FIS_WRITE_DATA, OUTPUT);
   setDataHigh();
-
-  // init port
-  //FIS_WRITE_send_3LB_singleByteCommand(0xF0);
-  //delay(200);
-  //FIS_WRITE_send_3LB_singleByteCommand(0xC3);
-  //delay(200);
-  //FIS_WRITE_send_3LB_singleByteCommand(0xF0);
-  //delay(200);
-  //FIS_WRITE_send_3LB_singleByteCommand(0xC3);
-  //delay(200);
-}; // FIS_init
+};
 
 
 
 static char tx_array[25];
 
 void VAGFISWriter::sendString(String line1, String line2, bool center) {
-	line1.toUpperCase();
-	line2.toUpperCase();
+  line1.toUpperCase();
+  line2.toUpperCase();
   // fill lines to 8 chars
   while (line1.length() < 8) line1 += " ";
   while (line2.length() < 8) line2 += " ";
@@ -96,7 +84,7 @@ void VAGFISWriter::sendString(String line1, String line2, bool center) {
   if (tx_array[10] == 32 && !center) tx_array[10] = 28; // set last char to 28 if not center
   line2.toCharArray(&tx_array[11], 9);
   if (tx_array[18] == 32 && !center) tx_array[18] = 28; // set last char to 28 if not center
-  tx_array[19] = (char)checksum((uint8_t*)tx_array);
+  tx_array[19] = (char)checkSum((uint8_t*)tx_array);
 
   sendRawData(tx_array);
 
@@ -112,7 +100,7 @@ void VAGFISWriter::sendStringFS(int x, int y, String line) {
   tx_array[4] = y;
   line.toCharArray(&tx_array[5], line.length() + 1);
 //checksum is calculated inside sendRawData function
-//  tx_array[line.length() + 5] = (char)checksum((uint8_t*)tx_array);
+//  tx_array[line.length() + 5] = (char)checkSum((uint8_t*)tx_array);
   sendRawData(tx_array);
 }
 
@@ -125,7 +113,7 @@ void VAGFISWriter::sendMsg(char msg[]) {
   for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
     tx_array[3 + i] = msg[i];
   }
-  //tx_array[19] = (char)checksum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
+  //tx_array[19] = (char)checkSum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
   sendRawData(tx_array);
 }
 
@@ -192,9 +180,11 @@ char myArray[7] = {0x53,0x06,mode,X,Y,X1,Y1};
 void VAGFISWriter::reset(uint8_t mode){
 	VAGFISWriter::initScreen(mode,0,0,1,1);
 }
+
 void VAGFISWriter::initMiddleScreen(uint8_t mode){
 	VAGFISWriter::initScreen(mode,0,27,64,48);
 }
+
 void VAGFISWriter::initFullScreen(uint8_t mode){
 	VAGFISWriter::initScreen(mode,0,0,64,88);
 }
@@ -337,77 +327,6 @@ v is empty
 w is empty
 x is empty
 y is empty
-z is emptyV
-
-Of course, there is no Russian.
-letters are uppercase only, lowercase letters instead of letters
-
-characters in standard font:
-----------------------------------
-
-a - umlaut
-b - single quotation mark
-c - fatty point
-d - single quotation mark
-e is empty
-f - underscore
-g - down arrow
-h is empty
-i - right arrow (shaded)
-j - degree
-k is empty
-l is empty
-m - asterisk
-n - right arrow
-o - empty
-p is the right arrow (shaded)
-q - Inverted exclamation point
-r is empty
-s is empty
-t is empty
-u is empty
-v is empty
-w is empty
-x is empty
-y is empty
-z is empty
-
-0x18 - Up arrow (with a tail)
-0x19 - down arrow (with a tail)
-0x1A - right arrow (with a tail)
-0x1B - left arrow (with a tail)
-
-0x1E - up arrow (shaded)
-0x1F - down arrow (shaded)
-
-characters in a compressed font:
-----------------------------------
-
-a - umlaut
-b - small dot
-c - fatty point
-d is empty
-e is empty
-f - underscore
-g is empty
-h - dash
-i - right arrow (shaded)
-j - blunt arrow to the right
-k is empty
-l is empty
-m - asterisk
-n - right arrow
-o - lattice (pixel through pixel)
-p is a large lattice
-q - Inverted exclamation point
-r is empty
-s is empty
-t is empty
-u is empty
-v is empty
-w is empty
-x is empty
-y is empty
 z is empty
 
 */
@@ -475,40 +394,35 @@ sendRawData(myArray);
 
 }
 
-void VAGFISWriter::sendRawData(char data[]){
+uint8_t VAGFISWriter::sendRawData(char data[]){
 
 #ifdef ENABLE_IRQ
   cli();
 #endif
   // Send FIS-command
-  //FIS_WRITE_startENA();
-  //FIS_WRITE_3LB_sendByte(data[FIS_MSG_COMMAND]); //ID
-  //FIS_WRITE_stopENA(); 
-FIS_WRITE_send_3LB_singleByteCommand(data[FIS_MSG_COMMAND]);
+  if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
   uint8_t crc =data[FIS_MSG_COMMAND];
 
   for (uint16_t a=1;a<data[1]+1;a++)
   {
   // Step 2 - wait for response from cluster to set ENA-High
-  waitEnaHigh();
+  if (!waitEnaHigh()) return false;
   // Step 9.2 - ENA-Low detected
-  delayMicroseconds(40);
+//  delayMicroseconds(40);
   // calculate checksum
   crc ^= data[a];
-  FIS_WRITE_3LB_sendByte(data[a]);
-/*    // Step 10.2 - wait for response from cluster to set ENA-High
-    waitEnaHigh();
-}*/
+  sendByte(data[a]);
   }
 crc--;
     // Step 10.2 - wait for response from cluster to set ENA-High
-waitEnaHigh();
-FIS_WRITE_3LB_sendByte(crc);
+if (!waitEnaHigh()) return false;
+sendByte(crc);
 
 #ifdef ENABLE_IRQ
   sei();
 #endif
 delay(2);
+return true;
 }
 
 void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, uint8_t data[],uint8_t mode){
@@ -536,57 +450,12 @@ sendRawData(in_msg);
 
 /**
 
-   Send Text-Message out on 3LB port to instrument cluster
-
-*/
-void VAGFISWriter::FIS_WRITE_send_3LB_msg(char in_msg[]) {
-#ifdef ENABLE_IRQ
-  cli();
-#endif
-
-//	FIS_WRITE_startENA();
-//	FIS_WRITE_3LB_sendByte(in_msg[FIS_MSG_COMMAND]);
-//	FIS_WRITE_stopENA();
-  // Send FIS-command
-FIS_WRITE_send_3LB_singleByteCommand(in_msg[FIS_MSG_COMMAND]);
-
-  byte msg_length = in_msg[FIS_MSG_LENGTH];
-  byte msg_end = msg_length + 1;
-
-  uint8_t crc =in_msg[FIS_MSG_COMMAND];
-  
-  for (uint16_t i = 1; i <= msg_end; i++)
-  {
-  // Step 2 - wait for response from cluster to set ENA-High
-waitEnaHigh();
-
-    delayMicroseconds(40);
-
-    // calculate checksum
-    if (i == msg_end) {
-      crc --;
-      in_msg[i] = crc;
-    } else {
-      crc ^= in_msg[i];
-    }
-
-    FIS_WRITE_3LB_sendByte(in_msg[i]);
-  }
-
-#ifdef ENABLE_IRQ
-  sei();
-#endif
-}
-
-
-/**
-
    Send Keep-Alive message
 
 */
 void VAGFISWriter::sendKeepAliveMsg() {
   delay(100);
-  FIS_WRITE_send_3LB_singleByteCommand(0xC3);
+  sendSingleByteCommand(0xC3);
   delay(100);
 }
 
@@ -602,21 +471,31 @@ void VAGFISWriter::displayBlank() {
    Send Single-Command out on 3LB port to instrument cluster
 
 */
-void VAGFISWriter::FIS_WRITE_send_3LB_singleByteCommand(uint8_t txByte) {
+uint8_t VAGFISWriter::sendSingleByteCommand(uint8_t txByte) {
+  uint16_t timeout_us = 1000;
+  while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+    delayMicroseconds(1);
+    timeout_us -= 1;
+  }
+  if (timeout_us == 0) return false;
+//if(!digitalRead(_FIS_WRITE_ENA)){
 
 #ifdef ENABLE_IRQ
   cli();
 #endif
 
-	FIS_WRITE_startENA();
-	FIS_WRITE_3LB_sendByte(txByte);
-	FIS_WRITE_stopENA();
+	startENA();
+	sendByte(txByte);
+	stopENA();
 
 delayMicroseconds(30);
 
 #ifdef ENABLE_IRQ
   sei();
 #endif
+return true;
+//}
+//return false;
 }
 
 /**
@@ -624,38 +503,42 @@ delayMicroseconds(30);
    Send byte out on 3LB port to instrument cluster
 
 */
-void VAGFISWriter::FIS_WRITE_3LB_sendByte(uint8_t in_byte) {
+void VAGFISWriter::sendByte(uint8_t in_byte) {
 
-  uint8_t tx_byte = 0xff - in_byte;
-  for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
+	uint8_t tx_byte = 0xff - in_byte;
+	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
 
-    switch ((tx_byte & (1 << i)) > 0 ) {
-      case 1: setDataHigh();
-        break;
-      case 0: setDataLow();
-        break;
-    }
-    setClockLow();
-    delayMicroseconds(FIS_WRITE_PULSEW);
-    setClockHigh();
-    setDataHigh();
-    delayMicroseconds(FIS_WRITE_PULSEW);
-  }
-delayMicroseconds(50);
+		switch ((tx_byte & (1 << i)) > 0 ) {
+			case 1: setDataHigh();
+				break;
+			case 0: setDataLow();
+				break;
+		}
+
+		setClockLow();
+		delayMicroseconds(FIS_WRITE_PULSEW);
+		setClockHigh();
+		setDataHigh();
+		delayMicroseconds(FIS_WRITE_PULSEW);
+	}
+	//delayMicroseconds(50);
 }
 
 /**
    Set 3LB ENA active High
 */
-void VAGFISWriter::FIS_WRITE_startENA() {
+void VAGFISWriter::startENA() {
+  digitalWrite(_FIS_WRITE_ENA, HIGH);
   pinMode(_FIS_WRITE_ENA, OUTPUT);
   digitalWrite(_FIS_WRITE_ENA, HIGH);
 }
 /**
    Set 3LB ENA paaive Low
 */
-void VAGFISWriter::FIS_WRITE_stopENA() {
+void VAGFISWriter::stopENA() {
+  digitalWrite(_FIS_WRITE_ENA, LOW);
   pinMode(_FIS_WRITE_ENA, INPUT);
+  digitalWrite(_FIS_WRITE_ENA, LOW);
 }
 
 /**
@@ -690,7 +573,7 @@ digitalWrite(_FIS_WRITE_DATA,LOW);
    example: uint8_t msg[] = {18, 240, 32, 78, 82, 75, 32, 80, 49, 32, 70, 77, 49, 46, 49, 32, 32, 28};
 
 */
-uint8_t VAGFISWriter::checksum( volatile uint8_t in_msg[]) {
+uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
   uint8_t crc = in_msg[0];
   for (int16_t i = 1; i < sizeof(in_msg); i++)
   {
@@ -702,7 +585,7 @@ uint8_t VAGFISWriter::checksum( volatile uint8_t in_msg[]) {
 }
 
 
-void VAGFISWriter::waitEnaHigh(){
+uint8_t VAGFISWriter::waitEnaHigh(){
 delayMicroseconds(50);
 
   uint16_t timeout_us = 1000;
