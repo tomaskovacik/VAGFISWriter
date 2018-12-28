@@ -10,8 +10,8 @@ reset	KEYWORD2
 sendRawMsg	KEYWORD2
 sendRawData	KEYWORD2
 sendKeepAliveMsg	KEYWORD2
-displayOff	KEYWORD2
-displayBlank	KEYWORD2
+radioDisplayOff	KEYWORD2
+radioDisplayBlank	KEYWORD2
 GraphicFromArray	KEYWORD2
 printFreeMem	KEYWORD2
 GraphicOut	KEYWORD2

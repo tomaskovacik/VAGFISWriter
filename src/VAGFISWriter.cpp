@@ -459,11 +459,13 @@ void VAGFISWriter::sendKeepAliveMsg() {
   delay(100);
 }
 
-void VAGFISWriter::displayOff() {
-  sendRawData((char*)off);
+void VAGFISWriter::radioDisplayOff() {
+char off[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+VAGFISWriter::sendMsg(off);
 }
-void VAGFISWriter::displayBlank() {
-  sendRawData((char*)blank);
+void VAGFISWriter::radioDisplayBlank() {
+char blank[16] = {32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32};
+VAGFISWriter::sendMsg(blank);
 }
 
 /**
@@ -569,7 +571,7 @@ digitalWrite(_FIS_WRITE_DATA,LOW);
 /**
    checksum routine to calculate the crc
 
-   takes komplete message as parameter including messagelength and the 240 constant followed by the 16 byte message
+   takes complete message as parameter including messagelength and the 240 constant followed by the 16 byte message
    example: uint8_t msg[] = {18, 240, 32, 78, 82, 75, 32, 80, 49, 32, 70, 77, 49, 46, 49, 32, 32, 28};
 
 */

@@ -21,9 +21,6 @@
 #define FIS_MSG_COMMAND 0
 #define FIS_MSG_LENGTH 1
 
-static uint8_t off[] = {0x81, 18, 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 98};
-static uint8_t blank[] = {0x81, 18, 240, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 98};
-
 class VAGFISWriter
 {
   public:
@@ -42,8 +39,8 @@ class VAGFISWriter
     //void sendRawMsg(char in_msg[]);
     uint8_t sendRawData(char data[]);
     void sendKeepAliveMsg();
-    void displayOff();
-    void displayBlank();
+    void radioDisplayOff();
+    void radioDisplayBlank();
     void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,uint8_t data[],uint8_t mode);
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, uint8_t data[],uint8_t mode,uint8_t offset);
     private:
