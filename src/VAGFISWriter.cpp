@@ -406,17 +406,17 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   for (uint16_t a=1;a<data[1]+1;a++)
   {
   // Step 2 - wait for response from cluster to set ENA-High
-  if (!waitEnaHigh()) return false;
-  // Step 9.2 - ENA-Low detected
-//  delayMicroseconds(40);
   // calculate checksum
   crc ^= data[a];
+  if(!waitEnaHigh()) return false;
   sendByte(data[a]);
+  if(!waitEnaLow()) return false;
   }
-crc--;
-    // Step 10.2 - wait for response from cluster to set ENA-High
-if (!waitEnaHigh()) return false;
-sendByte(crc);
+  crc--;
+  if(!waitEnaHigh()) return false;
+  // Step 10.2 - wait for response from cluster to set ENA-High
+  sendByte(crc);
+  if(!waitEnaLow()) return false;
 
 #ifdef ENABLE_IRQ
   sei();
@@ -474,14 +474,8 @@ VAGFISWriter::sendMsg(blank);
 
 */
 uint8_t VAGFISWriter::sendSingleByteCommand(uint8_t txByte) {
-  uint16_t timeout_us = 1000;
-  while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-    delayMicroseconds(1);
-    timeout_us -= 1;
-  }
-  if (timeout_us == 0) return false;
-//if(!digitalRead(_FIS_WRITE_ENA)){
-
+  //wait for ena line to be low = noone sending to cluster anything
+  if(!waitEnaLow()) return false;
 #ifdef ENABLE_IRQ
   cli();
 #endif
@@ -490,14 +484,13 @@ uint8_t VAGFISWriter::sendSingleByteCommand(uint8_t txByte) {
 	sendByte(txByte);
 	stopENA();
 
-delayMicroseconds(30);
+  if(!waitEnaLow()) return false;
 
 #ifdef ENABLE_IRQ
   sei();
 #endif
+//if we are here, we are fine ...
 return true;
-//}
-//return false;
 }
 
 /**
@@ -506,7 +499,6 @@ return true;
 
 */
 void VAGFISWriter::sendByte(uint8_t in_byte) {
-
 	uint8_t tx_byte = 0xff - in_byte;
 	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
 
@@ -520,10 +512,8 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 		setClockLow();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 		setClockHigh();
-		setDataHigh();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 	}
-	//delayMicroseconds(50);
 }
 
 /**
@@ -582,19 +572,28 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
     crc ^= in_msg[i];
   }
   crc --;
-
   return crc;
 }
 
 
 uint8_t VAGFISWriter::waitEnaHigh(){
-delayMicroseconds(50);
-
-  uint16_t timeout_us = 1000;
+uint16_t timeout_us = 1000;
   while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
     delayMicroseconds(1);
     timeout_us -= 1;
   }
-
+  if (timeout_us == 0) return false;
+return true;
 }
+
+uint8_t VAGFISWriter::waitEnaLow(){
+  uint16_t timeout_us = 1000;
+  while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+    delayMicroseconds(1);
+    timeout_us -= 1;
+  }
+  if (timeout_us == 0) return false;
+return true;
+}
+
 

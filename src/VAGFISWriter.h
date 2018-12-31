@@ -59,6 +59,7 @@ class VAGFISWriter
     void setDataHigh();
     void setDataLow();
     uint8_t waitEnaHigh();
+    uint8_t waitEnaLow();
     uint8_t checkSum( volatile uint8_t in_msg[]);
 
 };
