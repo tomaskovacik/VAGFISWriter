@@ -10,7 +10,6 @@
 // based on FIS_emulator
 
 #define FIS_WRITE_PULSEW 4
-#define FIS_WRITE_START 15 //something like address, first byte is always 15
 
 #define PORT_3LB PORTB
 #define DATA  PB3 //MOSI (Arduino Uno 11)
