@@ -405,11 +405,12 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 
   for (uint16_t a=1;a<data[1]+1;a++)
   {
-  // Step 2 - wait for response from cluster to set ENA-High
   // calculate checksum
   crc ^= data[a];
+  // Step 2 - wait for response from cluster to set ENA-High
   if(!waitEnaHigh()) return false;
   sendByte(data[a]);
+  // wait for response from cluster to set ENA LOW
   if(!waitEnaLow()) return false;
   }
   crc--;
@@ -438,15 +439,6 @@ uint8_t packet_size = (sizex+7)/8; // how much byte per packet
 		delay(5);
 	}
 }
-
-/**
-
-   Prepare and send Text-Message
-
-*/
-/*void VAGFISWriter::sendRawMsg(char in_msg[]) {
-sendRawData(in_msg);
-}*/
 
 /**
 
@@ -508,7 +500,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 			case 0: setDataLow();
 				break;
 		}
-
+		delayMicroseconds(9);
 		setClockLow();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 		setClockHigh();
