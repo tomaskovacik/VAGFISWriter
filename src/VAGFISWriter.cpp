@@ -104,7 +104,7 @@ void VAGFISWriter::sendStringFS(int x, int y, String line) {
   sendRawData(tx_array);
 }
 
-void VAGFISWriter::sendMsg(char msg[]) {
+uint8_t VAGFISWriter::sendMsg(char msg[]) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
   tx_array[1] = 18; // Length of this message (command and this length not counted
@@ -114,7 +114,7 @@ void VAGFISWriter::sendMsg(char msg[]) {
     tx_array[3 + i] = msg[i];
   }
   //tx_array[19] = (char)checkSum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
-  sendRawData(tx_array);
+  return sendRawData(tx_array);
 }
 
 void VAGFISWriter::initScreen(uint8_t mode,uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1) {
@@ -410,6 +410,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   // Step 2 - wait for response from cluster to set ENA-High
   if(!waitEnaHigh()) return false;
   sendByte(data[a]);
+  
   // wait for response from cluster to set ENA LOW
   if(!waitEnaLow()) return false;
   }
@@ -436,7 +437,7 @@ uint8_t packet_size = (sizex+7)/8; // how much byte per packet
 		        _data[i]=data[(line*packet_size)+i];
 		}
 		GraphicOut(x,line+y,packet_size,_data,mode,0);
-		delay(5);
+		delay(5); //OEM cluster can handle 5 here
 	}
 }
 
@@ -471,7 +472,6 @@ uint8_t VAGFISWriter::sendSingleByteCommand(uint8_t txByte) {
 #ifdef ENABLE_IRQ
   cli();
 #endif
-
 	startENA();
 	sendByte(txByte);
 	stopENA();
@@ -579,7 +579,7 @@ return true;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(){
-  uint16_t timeout_us = 1000;
+uint16_t timeout_us = 1000;
   while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
     delayMicroseconds(1);
     timeout_us -= 1;
@@ -588,4 +588,23 @@ uint8_t VAGFISWriter::waitEnaLow(){
 return true;
 }
 
+bool VAGFISWriter::sendRadioMsg(char msg[16]){
+//if(!waitEnaLow()) return false;
+startENA();
+delayMicroseconds(100);
+stopENA();
+delayMicroseconds(100);
+startENA();
+uint8_t crc=0xF0;
+sendByte(0xF0); 
 
+ for (uint16_t a=0;a<16;a++) //radio msg is always 16chars
+  {
+  // calculate checksum
+  crc += msg[a];
+  sendByte(msg[a]);
+  }
+sendByte(0xFF ^ crc);
+stopENA();
+return true;
+}
