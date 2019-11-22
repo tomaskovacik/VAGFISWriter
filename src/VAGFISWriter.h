@@ -10,7 +10,6 @@
 // based on FIS_emulator
 
 #define FIS_WRITE_PULSEW 4
-#define FIS_WRITE_START 15 //something like address, first byte is always 15
 
 #define PORT_3LB PORTB
 #define DATA  PB3 //MOSI (Arduino Uno 11)
@@ -28,7 +27,9 @@ class VAGFISWriter
     ~VAGFISWriter();
     void begin();
 
-    void sendMsg(char msg[]);
+    uint8_t sendMsg(char msg[]);
+    bool sendRadioMsg(char msg[16]);
+    //bool sendRadioMsg(String msg);
     void sendString(String line1="", String line2="", bool center=true);
     void sendStringFS(int x, int y, String line);
     void sendMsgFS(uint8_t X,uint8_t Y,uint8_t font,uint8_t size,char msg[]);
