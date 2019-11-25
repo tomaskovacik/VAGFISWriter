@@ -27,7 +27,7 @@ There is one more option for data transfer in which the master raises the Enable
 It is necessary to pause between bytes of approximately 80-100us. And also to pause at least 4-5ms between packets, especially if packets go on continuously.
 Unfortunately, in this mode, it is not possible to control the transmitted data. A slave may simply not accept the package, and the master will not know about it.
 */
-#include "VAGFISWriter.h"
+#include "VAGFISWriter2.h"
 #include <Arduino.h>
 
 // #define ENABLE_IRQ 1
@@ -57,12 +57,13 @@ VAGFISWriter::~VAGFISWriter()
 
 */
 void VAGFISWriter::begin() {
-//pinMode(5,OUTPUT);
-  stopENA();
   pinMode(_FIS_WRITE_CLK, OUTPUT);
   setClockHigh();
   pinMode(_FIS_WRITE_DATA, OUTPUT);
   setDataHigh();
+  stopENA();
+  //only if we are going to write in radio mode, but it is safe to have this here in NAVI mode, NAVI did not request anything
+  attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA), &VAGFISWriter::setInterruptForENABLEGoesLow, RISING);
 };
 
 
@@ -104,7 +105,7 @@ void VAGFISWriter::sendStringFS(int x, int y, String line) {
   sendRawData(tx_array);
 }
 
-void VAGFISWriter::sendMsg(char msg[]) {
+uint8_t VAGFISWriter::sendMsg(char msg[]) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
   tx_array[1] = 18; // Length of this message (command and this length not counted
@@ -114,7 +115,7 @@ void VAGFISWriter::sendMsg(char msg[]) {
     tx_array[3 + i] = msg[i];
   }
   //tx_array[19] = (char)checkSum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
-  sendRawData(tx_array);
+  return sendRawData(tx_array);
 }
 
 void VAGFISWriter::initScreen(uint8_t mode,uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1) {
@@ -410,6 +411,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   // Step 2 - wait for response from cluster to set ENA-High
   if(!waitEnaHigh()) return false;
   sendByte(data[a]);
+  
   // wait for response from cluster to set ENA LOW
   if(!waitEnaLow()) return false;
   }
@@ -422,7 +424,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 #ifdef ENABLE_IRQ
   sei();
 #endif
-delay(2);
+//delay(2);
 return true;
 }
 
@@ -436,7 +438,8 @@ uint8_t packet_size = (sizex+7)/8; // how much byte per packet
 		        _data[i]=data[(line*packet_size)+i];
 		}
 		GraphicOut(x,line+y,packet_size,_data,mode,0);
-		delay(5);
+		delay(5); //OEM cluster can handle 5 here
+//		delay(20);
 	}
 }
 
@@ -520,9 +523,9 @@ void VAGFISWriter::startENA() {
    Set 3LB ENA paaive Low
 */
 void VAGFISWriter::stopENA() {
-  digitalWrite(_FIS_WRITE_ENA, LOW);
+//  digitalWrite(_FIS_WRITE_ENA, LOW);
   pinMode(_FIS_WRITE_ENA, INPUT);
-  digitalWrite(_FIS_WRITE_ENA, LOW);
+  //digitalWrite(_FIS_WRITE_ENA, LOW);
 }
 
 /**
@@ -569,7 +572,7 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
 
 
 uint8_t VAGFISWriter::waitEnaHigh(){
-uint16_t timeout_us = 1000;
+uint16_t timeout_us = 100000;
   while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
     delayMicroseconds(1);
     timeout_us -= 1;
@@ -579,7 +582,7 @@ return true;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(){
-  uint16_t timeout_us = 1000;
+  uint16_t timeout_us = 100000;
   while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
     delayMicroseconds(1);
     timeout_us -= 1;
@@ -588,4 +591,51 @@ uint8_t VAGFISWriter::waitEnaLow(){
 return true;
 }
 
+bool VAGFISWriter::sendRadioMsg(char msg[16])
+{
+//memcopy(
+radioDataOK=0;
+for (uint8_t i=0;i<16;i++)
+{
+	radioData[i]=msg[i];
+}
+radioDataOK=1;
+}
+
+void VAGFISWriter::setInterruptForENABLEGoesLow(void)
+{
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableSendRadioData,FALLING);
+}
+
+void VAGFISWriter::enableSendRadioData(void)
+{
+	sendOutRadioData=1;
+	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+//attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::setInterruptForENABLEGoesLow,RISING);
+}
+
+void VAGFISWriter::sendRadioData(void)
+{
+	//if(!waitEnaLow()) return false;
+	if (radioDataOK && sendOutRadioData){
+	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+//	startENA();
+//	delayMicroseconds(100);
+//	stopENA();
+//	delayMicroseconds(100);
+	startENA();
+	uint8_t crc=0xF0;
+	sendByte(0xF0); 
+	for (uint8_t a=0;a<16;a++) //radio msg is always 16chars
+	{
+		// calculate checksum
+		crc += radioData[a];
+		sendByte(radioData[a]);
+	}
+	sendByte(0xFF ^ crc);
+	stopENA();
+	sendOutRadioData=0;
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::setInterruptForENABLEGoesLow,RISING);
+	}
+}
 
