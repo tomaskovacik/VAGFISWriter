@@ -27,7 +27,7 @@ There is one more option for data transfer in which the master raises the Enable
 It is necessary to pause between bytes of approximately 80-100us. And also to pause at least 4-5ms between packets, especially if packets go on continuously.
 Unfortunately, in this mode, it is not possible to control the transmitted data. A slave may simply not accept the package, and the master will not know about it.
 */
-#include "VAGFISWriter2.h"
+#include "VAGFISWriter.h"
 #include <Arduino.h>
 
 // #define ENABLE_IRQ 1
@@ -600,6 +600,7 @@ for (uint8_t i=0;i<16;i++)
 	radioData[i]=msg[i];
 }
 radioDataOK=1;
+sendOutRadioData=1; //force 1st packet out
 }
 
 void VAGFISWriter::setInterruptForENABLEGoesLow(void)
