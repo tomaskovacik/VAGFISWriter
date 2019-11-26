@@ -19,8 +19,12 @@
 // Positions in Message-Array
 #define FIS_MSG_COMMAND 0
 #define FIS_MSG_LENGTH 1
-    static volatile uint8_t sendOutRadioData;
+    static volatile uint8_t sendOutData;
     static uint8_t _FIS_WRITE_ENA;
+    static uint8_t _FIS_WRITE_CLK;
+    static uint8_t _FIS_WRITE_DATA;
+    static char radioData[16];
+    static uint8_t radioDataOK=0;
 
 class VAGFISWriter
 {
@@ -44,26 +48,21 @@ class VAGFISWriter
     void sendKeepAliveMsg();
     void radioDisplayOff();
     void radioDisplayBlank();
-    void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,uint8_t data[],uint8_t mode);
+    void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,const uint8_t data[],uint8_t mode);
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, uint8_t data[],uint8_t mode,uint8_t offset);
-    void sendRadioData(void);
-    static void setInterruptForENABLEGoesLow(void);
-    static void enableSendRadioData(void);
-    char radioData[16];
-    private:
+    void sendRadioData(uint8_t force = 0);
+    static void enableGoesHigh(void);
+    static void enableGoesLow(void);
 
-    uint8_t _FIS_WRITE_CLK;
-    uint8_t _FIS_WRITE_DATA;
-    uint8_t radioDataOK;
-    uint8_t sendSingleByteCommand(uint8_t txByte);
-    void sendEnablePulse();
+    private:
     void sendByte(uint8_t in_byte);
-    void startENA();
-    void stopENA();
     void setClockHigh();
     void setClockLow();
     void setDataHigh();
     void setDataLow();
+    void startENA();
+    void stopENA();
+    uint8_t sendSingleByteCommand(uint8_t txByte);
     uint8_t waitEnaHigh();
     uint8_t waitEnaLow();
     uint8_t checkSum( volatile uint8_t in_msg[]);

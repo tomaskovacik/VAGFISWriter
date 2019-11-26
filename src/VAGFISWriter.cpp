@@ -58,12 +58,12 @@ VAGFISWriter::~VAGFISWriter()
 */
 void VAGFISWriter::begin() {
   pinMode(_FIS_WRITE_CLK, OUTPUT);
-  setClockHigh();
+  setClockLow();
   pinMode(_FIS_WRITE_DATA, OUTPUT);
-  setDataHigh();
+  setDataLow();
   stopENA();
   //only if we are going to write in radio mode, but it is safe to have this here in NAVI mode, NAVI did not request anything
-  attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA), &VAGFISWriter::setInterruptForENABLEGoesLow, RISING);
+//  attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA), &VAGFISWriter::setInterruptForENABLEGoesLow, RISING);
 };
 
 
@@ -111,9 +111,10 @@ uint8_t VAGFISWriter::sendMsg(char msg[]) {
   tx_array[1] = 18; // Length of this message (command and this length not counted
   tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
 
-  for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
+/*  for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
     tx_array[3 + i] = msg[i];
-  }
+  }*/
+memcpy(&tx_array[3],&msg,16);
   //tx_array[19] = (char)checkSum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
   return sendRawData(tx_array);
 }
@@ -337,10 +338,11 @@ z is empty
   tx_array[2] = font; 
   tx_array[3] = X;
   tx_array[4] = Y;
-  for (int16_t i = 0; i < size; i++) { // TODO: use memcpy
+/*  for (int16_t i = 0; i < size; i++) { // TODO: use memcpy
     tx_array[5 + i] = ' ';
     tx_array[5 + i] = msg[i];
-  }
+  }*/
+  memcpy(&tx_array[5],&msg,size);
 
   sendRawData(tx_array);
 }
@@ -387,10 +389,12 @@ myArray[1] = size+4;
 myArray[2] = mode;
 myArray[3] = x;
 myArray[4] = y;
+/*
 for (uint16_t a=0;a<size;a++){
 	myArray[a+5] = data[offset+a];
 }
-
+*/
+memcpy(&myArray[5],&data[offset],size);
 sendRawData(myArray);
 
 }
@@ -428,18 +432,19 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 return true;
 }
 
-void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, uint8_t data[],uint8_t mode){
+void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, const uint8_t data[],uint8_t mode){
 // 22x32bytes = 704 
 uint8_t packet_size = (sizex+7)/8; // how much byte per packet
 	
 	for (uint8_t line = 0;line<sizey;line++){
 		uint8_t _data[packet_size];
-		for (uint8_t i=0;i<packet_size;i++){
-		        _data[i]=data[(line*packet_size)+i];
-		}
+//		for (uint8_t i=0;i<packet_size;i++){
+//		        _data[i]=data[(line*packet_size)+i];
+//		}
+		memcpy_P(&_data,&data[(line*packet_size)],packet_size);
 		GraphicOut(x,line+y,packet_size,_data,mode,0);
-		delay(5); //OEM cluster can handle 5 here
-//		delay(20);
+//		delay(5); //OEM cluster can handle 5 here
+		delay(20);
 	}
 }
 
@@ -515,6 +520,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
    Set 3LB ENA active High
 */
 void VAGFISWriter::startENA() {
+  detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
   digitalWrite(_FIS_WRITE_ENA, HIGH);
   pinMode(_FIS_WRITE_ENA, OUTPUT);
   digitalWrite(_FIS_WRITE_ENA, HIGH);
@@ -523,9 +529,11 @@ void VAGFISWriter::startENA() {
    Set 3LB ENA paaive Low
 */
 void VAGFISWriter::stopENA() {
-//  digitalWrite(_FIS_WRITE_ENA, LOW);
-  pinMode(_FIS_WRITE_ENA, INPUT);
-  //digitalWrite(_FIS_WRITE_ENA, LOW);
+	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+	//digitalWrite(_FIS_WRITE_ENA, LOW);
+	pinMode(_FIS_WRITE_ENA, INPUT);
+	//digitalWrite(_FIS_WRITE_ENA, LOW);
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 }
 
 /**
@@ -572,7 +580,7 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
 
 
 uint8_t VAGFISWriter::waitEnaHigh(){
-uint16_t timeout_us = 100000;
+uint16_t timeout_us = 10000;
   while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
     delayMicroseconds(1);
     timeout_us -= 1;
@@ -582,7 +590,7 @@ return true;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(){
-  uint16_t timeout_us = 100000;
+  uint16_t timeout_us = 10000;
   while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
     delayMicroseconds(1);
     timeout_us -= 1;
@@ -593,41 +601,41 @@ return true;
 
 bool VAGFISWriter::sendRadioMsg(char msg[16])
 {
-//memcopy(
-radioDataOK=0;
-for (uint8_t i=0;i<16;i++)
-{
-	radioData[i]=msg[i];
-}
-radioDataOK=1;
-sendOutRadioData=1; //force 1st packet out
+	radioDataOK=0;
+	memcpy(&radioData,&msg,16);
+	radioDataOK=1;
+	VAGFISWriter::sendRadioData(1);//force 1st packet
 }
 
-void VAGFISWriter::setInterruptForENABLEGoesLow(void)
+
+void VAGFISWriter::enableGoesHigh(void)
 {
-	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableSendRadioData,FALLING);
+if(digitalRead(_FIS_WRITE_ENA)){
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesLow,FALLING);
+}
 }
 
-void VAGFISWriter::enableSendRadioData(void)
+void VAGFISWriter::enableGoesLow(void)
 {
-	sendOutRadioData=1;
+	if(digitalRead(_FIS_WRITE_ENA)){
+		sendOutData=1;//cluster acknowleage previously received packet
+		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	}
+}
+
+void VAGFISWriter::sendRadioData(uint8_t force)
+{
+	if (force) sendOutData=1;
+	else delay(100); //in future we will use timer for this ...
+
+
+	if (radioDataOK && sendOutData)
+	{
 	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
-//attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::setInterruptForENABLEGoesLow,RISING);
-}
-
-void VAGFISWriter::sendRadioData(void)
-{
-	//if(!waitEnaLow()) return false;
-	if (radioDataOK && sendOutRadioData){
-	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
-//	startENA();
-//	delayMicroseconds(100);
-//	stopENA();
-//	delayMicroseconds(100);
 	startENA();
 	uint8_t crc=0xF0;
 	sendByte(0xF0); 
-	for (uint8_t a=0;a<16;a++) //radio msg is always 16chars
+	for (uint8_t a=0;a<16;a++)//radio msg is always 16chars
 	{
 		// calculate checksum
 		crc += radioData[a];
@@ -635,8 +643,7 @@ void VAGFISWriter::sendRadioData(void)
 	}
 	sendByte(0xFF ^ crc);
 	stopENA();
-	sendOutRadioData=0;
-	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::setInterruptForENABLEGoesLow,RISING);
+	sendOutData=0;
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }
-
