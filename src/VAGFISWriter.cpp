@@ -175,7 +175,7 @@ char myArray[7] = {0x53,0x06,mode,X,Y,X1,Y1};
   tx_array[6] = Y1;
 */
   sendRawData(myArray);
-if (X==0 && Y==0 && X1==1 && Y1==1) delay(23); //18ms pulse from cluster, probably ack that screen is out of graphix mode..
+if (X==0 && Y==0 && X1==1 && Y1==1) delay(25); //18ms pulse from cluster, probably ack that screen is out of graphix mode..
 }
 
 
