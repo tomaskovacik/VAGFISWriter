@@ -66,23 +66,25 @@ void redrawFrameBuffer() {
 
 void setup() {
   fisWriter.begin();
-  fisWriter.initScreen(0x82, 0, 0, 1, 1);
-  fisWriter.initScreen(0x82, 0, 0, 64, 88);
+  fisWriter.reset();
 }
 
 
 void loop() {  
-  fisWriter.initScreen(0x82, 0, 0, 64, 88);
+  fisWriter.initFullScreen();
   fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 1);
   delay(3000);
-  fisWriter.initScreen(0x82, 0, 0, 64, 88);
+  fisWriter.initFullScreenFilled();
+  fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 0);
+  delay(3000);
+  fisWriter.initFullScreen();
   fisWriter.GraphicFromArray(0, 0, 64, 65, Q, 1);
   fisWriter.GraphicFromArray(0, 70, 64, 16, QBSW, 1);
   delay(3000);
-  fisWriter.initScreen(0x82, 0, 0, 1, 1);
+  fisWriter.reset();
   fisWriter.sendMsg("12345678  TEST  ");
   delay(100);
-  fisWriter.initScreen(0x82, 0, 0x1B, 64, 0x30);
+  fisWriter.initMiddleScreen();
   fisWriter.GraphicFromArray(22, 1, 20, 46, sedan, 2);
   for (uint8_t x = 0; x < 2; x++) { //speed test
     lf();
