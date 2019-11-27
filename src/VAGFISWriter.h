@@ -37,6 +37,7 @@ class VAGFISWriter
     void reset(uint8_t mode = 0x82);
     void initMiddleScreen(uint8_t mode = 0x82);
     void initFullScreen(uint8_t mode = 0x82);
+    void initFullScreenFilled();
     //void sendRawMsg(char in_msg[]);
     uint8_t sendRawData(char data[]);
     void sendKeepAliveMsg();

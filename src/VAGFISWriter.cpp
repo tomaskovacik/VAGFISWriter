@@ -191,6 +191,10 @@ void VAGFISWriter::initFullScreen(uint8_t mode){
 	VAGFISWriter::initScreen(mode,0,0,64,88);
 }
 
+void VAGFISWriter::initFullScreenFilled(){
+        VAGFISWriter::initScreen(0x83,0,0,64,88);
+}
+
 
 void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char msg[]) {
 /*
@@ -436,16 +440,37 @@ return true;
 
 void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, uint8_t data[],uint8_t mode){
 // 22x32bytes = 704 
+if (sizex == 64) // send jumbo packets
+{
+uint8_t packet_size=32;
+uint8_t _data[packet_size];
+
+        for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
+                
+                for (uint8_t i=0;i<packet_size;i++){
+                        _data[i]=data[(line*packet_size)+i];
+                }
+                
+                GraphicOut(x,line*4+y,packet_size,_data,mode,0);//4=32/8
+//              delay(5); //OEM cluster can handle 5 here
+        }
+
+}
+else 
+{//stick to safe 1packet per line
 uint8_t packet_size = (sizex+7)/8; // how much byte per packet
+uint8_t _data[packet_size];
 	
 	for (uint8_t line = 0;line<sizey;line++){
-		uint8_t _data[packet_size];
+
 		for (uint8_t i=0;i<packet_size;i++){
 		        _data[i]=data[(line*packet_size)+i];
 		}
+
 		GraphicOut(x,line+y,packet_size,_data,mode,0);
 //		delay(5); //OEM cluster can handle 5 here
 	}
+}
 }
 
 /**
