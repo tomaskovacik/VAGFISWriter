@@ -54,13 +54,13 @@ class VAGFISWriter
     void sendEnablePulse();
     void sendByte(uint8_t in_byte);
     void startENA();
-    void stopENA();
+    uint8_t stopENA();
     void setClockHigh();
     void setClockLow();
     void setDataHigh();
     void setDataLow();
-    uint8_t waitEnaHigh();
-    uint8_t waitEnaLow();
+    uint8_t waitEnaHigh( uint16_t timeout_us = 1500);
+    uint8_t waitEnaLow( uint16_t timeout_us = 1500);
     uint8_t checkSum( volatile uint8_t in_msg[]);
 
 };
