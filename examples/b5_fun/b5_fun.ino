@@ -8,10 +8,12 @@
 //#define FIS_CLK PB3
 //#define FIS_DATA PB5
 //#define FIS_ENA PA15
-//avr-arduino
-#define FIS_CLK 3
-#define FIS_DATA 4
-#define FIS_ENA 2
+
+//avr
+#define FIS_ENA 5
+#define FIS_CLK 6
+#define FIS_DATA 7
+
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA );
 static char fisBuffer[10] = {'B', '5', ' ', 'F', 'A', 'M', 'I', 'L', 'I', 'A'} ;
 uint8_t frameBuffer[704];
@@ -20,7 +22,6 @@ void lf() {
   for (uint8_t line = 0; line < 8; line++) {
     uint8_t tmpdata[1] = {left_door[line]};
     fisWriter.GraphicOut(15, line + 19, 1, tmpdata, 1, 0);
-    delay(1);
   }
 }
 
@@ -28,7 +29,6 @@ void lr() {
   for (uint8_t line = 0; line < 8; line++) {
     uint8_t tmpdata[1] = {left_door[line]};
     fisWriter.GraphicOut(15, line + 19 + 8, 1, tmpdata, 1, 0);
-    delay(1);
   }
 }
 
@@ -36,14 +36,12 @@ void rf() {
   for (uint8_t line = 0; line < 8; line++) {
     uint8_t tmpdata[1] = {right_door[line]};
     fisWriter.GraphicOut(41, line + 19, 1, tmpdata, 1, 0);
-    delay(1);
   }
 }
 void rr() {
   for (uint8_t line = 0; line < 8; line++) {
     uint8_t tmpdata[1] = {right_door[line]};
     fisWriter.GraphicOut(41, line + 19 + 8, 1, tmpdata, 1, 0);
-    delay(1);
   }
 }
 
@@ -62,7 +60,6 @@ void redrawFrameBuffer() {
   //fisWriter.GraphicFromArray(0,0,64,88,frameBuffer,1);
   for (uint8_t line = 0; line < 88; line = line + 4) {
     fisWriter.initScreen(0x82, 0, 0, 64, 88);
-
     fisWriter.GraphicOut(0, line, 32, frameBuffer, 1, line * 8);
   }
 }
@@ -70,29 +67,24 @@ void redrawFrameBuffer() {
 void setup() {
   fisWriter.begin();
   fisWriter.initScreen(0x82, 0, 0, 1, 1);
-  delay(1000);
   fisWriter.initScreen(0x82, 0, 0, 64, 88);
 }
 
 
-void loop() {
-  delay(100);
+void loop() {  
   fisWriter.initScreen(0x82, 0, 0, 64, 88);
-  delay(1000);
   fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 1);
+  delay(3000);
   fisWriter.initScreen(0x82, 0, 0, 64, 88);
-  delay(100);
   fisWriter.GraphicFromArray(0, 0, 64, 65, Q, 1);
-  //delay(1000);
   fisWriter.GraphicFromArray(0, 70, 64, 16, QBSW, 1);
   delay(3000);
   fisWriter.initScreen(0x82, 0, 0, 1, 1);
-  delay(100);
   fisWriter.sendMsg("12345678  TEST  ");
-  delay(1000);
+  delay(100);
   fisWriter.initScreen(0x82, 0, 0x1B, 64, 0x30);
   fisWriter.GraphicFromArray(22, 1, 20, 46, sedan, 2);
-  for (uint8_t x = 0; x < 2; x++) {
+  for (uint8_t x = 0; x < 2; x++) { //speed test
     lf();
     lr();
     rf();
@@ -104,12 +96,10 @@ void loop() {
     rr();
     trunk();
   }
-  delay(1000);
   fisWriter.sendMsg("  TEST  12345678");
-
-  //while(true){ //and display will did not change forever
+  delay(1000);
+  //while(true){ //and display will did not change ever
   //  fisWriter.sendKeepAliveMsg();
   //  delay(1000);
   //}
 }
-
