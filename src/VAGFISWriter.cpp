@@ -112,9 +112,10 @@ uint8_t VAGFISWriter::sendMsg(char msg[]) {
   tx_array[1] = 18; // Length of this message (command and this length not counted
   tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
 
-  for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
+/*  for (uint8_t i = 0; i < 16; i++) { // TODO: use memcpy
     tx_array[3 + i] = msg[i];
-  }
+  }*/
+  memcpy(&tx_array[3],msg,16);
   //tx_array[19] = (char)checkSum((uint8_t*)tx_array); //no need to calculate this, it's calculated in sendRawData() while sending data out
   return sendRawData(tx_array);
 }
@@ -342,11 +343,11 @@ z is empty
   tx_array[2] = font; 
   tx_array[3] = X;
   tx_array[4] = Y;
-  for (int16_t i = 0; i < size; i++) { // TODO: use memcpy
+/*  for (int16_t i = 0; i < size; i++) { // TODO: use memcpy
     tx_array[5 + i] = ' ';
     tx_array[5 + i] = msg[i];
-  }
-
+  }*/
+  memcpy(&tx_array[5],msg,size);
   sendRawData(tx_array);
 }
 
@@ -447,13 +448,26 @@ uint8_t _data[packet_size];
 
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
                 
-                for (uint8_t i=0;i<packet_size;i++){
+/*                for (uint8_t i=0;i<packet_size;i++){
                         _data[i]=data[(line*packet_size)+i];
-                }
-                
+                }*/
+  		memcpy(&_data,&data[line*packet_size],packet_size);              
                 GraphicOut(x,line*4+y,packet_size,_data,mode,0);//4=32/8
 //              delay(5); //OEM cluster can handle 5 here
         }
+
+	if ((sizey*8)%packet_size>0){//few bytes left to by send
+		packet_size = packet_size-(sizey*8)%packet_size;
+		uint8_t line = 4*(sizey/4);
+//                for (uint8_t i=0;i<packet_size;i++){
+//                        _data[i]=data[(line*8)+i];
+//                }
+		memcpy(&_data,&data[line*8],packet_size);
+
+                GraphicOut(x,line+y,packet_size,_data,mode,0);//4=32/8
+//              delay(5); //OEM cluster can handle 5 here
+        }
+	
 
 }
 else 
@@ -463,10 +477,10 @@ uint8_t _data[packet_size];
 	
 	for (uint8_t line = 0;line<sizey;line++){
 
-		for (uint8_t i=0;i<packet_size;i++){
+/*		for (uint8_t i=0;i<packet_size;i++){
 		        _data[i]=data[(line*packet_size)+i];
-		}
-
+		}*/
+		memcpy(&_data,&data[(line*packet_size)],packet_size);
 		GraphicOut(x,line+y,packet_size,_data,mode,0);
 //		delay(5); //OEM cluster can handle 5 here
 	}
