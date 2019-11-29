@@ -20,6 +20,8 @@
 #define FIS_MSG_COMMAND 0
 #define FIS_MSG_LENGTH 1
 
+#define JUMBO_PACKET_SIZE 32
+
 class VAGFISWriter
 {
   public:
@@ -43,8 +45,12 @@ class VAGFISWriter
     void sendKeepAliveMsg();
     void radioDisplayOff();
     void radioDisplayBlank();
-    void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,uint8_t data[],uint8_t mode);
-    void GraphicOut(uint8_t x,uint8_t y, uint16_t size, uint8_t data[],uint8_t mode,uint8_t offset);
+    void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,char data[],uint8_t mode);
+    void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,const char * const data,uint8_t mode);
+    void GraphicFromArray_P(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,const char * const data,uint8_t mode);
+    void GraphicOut(uint8_t x,uint8_t y, uint16_t size, char data[],uint8_t mode);
+    void GraphicOut(uint8_t x,uint8_t y, uint16_t size, const char * const data,uint8_t mode);
+    void GraphicOut_P(uint8_t x,uint8_t y, uint16_t size, const char * const data,uint8_t mode);
     private:
 
     uint8_t _FIS_WRITE_CLK;
