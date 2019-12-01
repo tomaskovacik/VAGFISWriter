@@ -11,3 +11,11 @@ External pulldown is required on ENABLE line (4k7 resistor to ground).
 for conerting image to array I use this tool: https://www.digole.com/tools/PicturetoC_Hex_converter.php
 
 width = 64, height=88 
+
+videos of VAGFISWriter in action:
+
+https://youtu.be/cLox4ijMDg8
+
+https://youtu.be/AvmKIBc_7DA
+
+
