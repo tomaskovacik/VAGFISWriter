@@ -1,8 +1,8 @@
 //enhanced version of:
 //credits: https://github.com/arildlangseid/vw_t4_tcu_temp_to_fis
 
-#ifndef VAGFISWriter2_h
-#define VAGFISWriter2_h
+#ifndef VAGFISWriter_h
+#define VAGFISWriter_h
 
 #include <inttypes.h>
 #include <Arduino.h>
