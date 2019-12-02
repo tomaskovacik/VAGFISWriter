@@ -22,6 +22,13 @@
 
 #define JUMBO_PACKET_SIZE 32
 
+    static volatile uint8_t _sendOutData;
+    static uint8_t _FIS_WRITE_ENA;
+    static uint8_t _FIS_WRITE_CLK;
+    static uint8_t _FIS_WRITE_DATA;
+    static char _radioData[16];
+    static uint8_t _radioDataOK=0;
+
 class VAGFISWriter
 {
   public:
@@ -51,11 +58,11 @@ class VAGFISWriter
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, char data[],uint8_t mode);
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, const char * const data,uint8_t mode);
     void GraphicOut_P(uint8_t x,uint8_t y, uint16_t size, const char * const data,uint8_t mode);
+//    void sendRadioData(void);
+    void sendRadioData(uint8_t force = 0);
+    static void enableGoesHigh(void);
+    static void enableGoesLow(void);
     private:
-
-    uint8_t _FIS_WRITE_CLK;
-    uint8_t _FIS_WRITE_DATA;
-    uint8_t _FIS_WRITE_ENA;
 
     uint8_t sendSingleByteCommand(uint8_t txByte);
     void sendEnablePulse();

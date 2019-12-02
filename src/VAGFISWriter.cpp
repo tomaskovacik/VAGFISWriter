@@ -580,6 +580,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 
 */
 void VAGFISWriter::startENA() {
+  detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
   digitalWrite(_FIS_WRITE_ENA, HIGH);// avoid spikes
   pinMode(_FIS_WRITE_ENA, OUTPUT);
   digitalWrite(_FIS_WRITE_ENA, HIGH);
@@ -590,9 +591,12 @@ void VAGFISWriter::startENA() {
 
 */
 uint8_t VAGFISWriter::stopENA() {
-  digitalWrite(_FIS_WRITE_ENA, LOW);
+  //digitalWrite(_FIS_WRITE_ENA, LOW);
+  detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+  //digitalWrite(_FIS_WRITE_ENA, LOW);
   pinMode(_FIS_WRITE_ENA, INPUT);
-//  digitalWrite(_FIS_WRITE_ENA, LOW);
+  //digitalWrite(_FIS_WRITE_ENA, LOW);
+  attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 }
 
 /**
@@ -658,7 +662,7 @@ uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
 return true;
 }
 
-bool VAGFISWriter::sendRadioMsg(char msg[16]){
+/*bool VAGFISWriter::sendRadioMsg(char msg[16]){
 //if(!waitEnaLow()) return false;
 startENA();
 delayMicroseconds(100);
@@ -677,4 +681,52 @@ sendByte(0xF0);
 sendByte(0xFF ^ crc);
 stopENA();
 return true;
+}*/
+
+bool VAGFISWriter::sendRadioMsg(char msg[16])
+{
+	_radioDataOK=0;
+	memcpy(&_radioData,&msg,16);
+	_radioDataOK=1;
+	VAGFISWriter::sendRadioData(1);//force 1st packet
+}
+
+
+void VAGFISWriter::enableGoesHigh(void)
+{
+if(digitalRead(_FIS_WRITE_ENA)){
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesLow,FALLING);
+}
+}
+
+void VAGFISWriter::enableGoesLow(void)
+{
+	if(digitalRead(_FIS_WRITE_ENA)){
+		_sendOutData=1;//cluster acknowleage previously received packet
+		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	}
+}
+
+void VAGFISWriter::sendRadioData(uint8_t force)
+{
+	if (force) _sendOutData=1;
+	else delay(100); //in future we will use timer for this ...
+
+	if (_radioDataOK && _sendOutData)
+	{
+	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+	startENA();
+	uint8_t crc=0xF0;
+	sendByte(0xF0); 
+	for (uint8_t a=0;a<16;a++)//radio msg is always 16chars
+	{
+		// calculate checksum
+		crc += _radioData[a];
+		sendByte(_radioData[a]);
+	}
+	sendByte(0xFF ^ crc);
+	stopENA();
+	_sendOutData=0;
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	}
 }
