@@ -572,6 +572,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 		setClockHigh();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 	}
+Serial.write(in_byte);Serial.print(" ");
 }
 
 /**
@@ -683,10 +684,11 @@ stopENA();
 return true;
 }*/
 
-bool VAGFISWriter::sendRadioMsg(char msg[16])
+bool VAGFISWriter::sendRadioMsg(char * msg])
 {
 	_radioDataOK=0;
-	memcpy(&_radioData,&msg,16);
+	memcpy(&_radioData,msg,16);
+
 	_radioDataOK=1;
 	VAGFISWriter::sendRadioData(1);//force 1st packet
 }
