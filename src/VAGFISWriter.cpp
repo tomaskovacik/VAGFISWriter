@@ -663,20 +663,22 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
 
 uint8_t VAGFISWriter::waitEnaHigh(uint16_t timeout_us)
 {
-  /*while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-    delayMicroseconds(1);
-    timeout_us -= 1;
-  }
-  if (timeout_us == 0) return false;*/
+	if (__forced == unforced)
+	while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+		delayMicroseconds(1);
+		timeout_us -= 1;
+	}
+  if (timeout_us == 0) return false;
 return true;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
-  /*while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-    delayMicroseconds(1);
-    timeout_us -= 1;
-  }
-  if (timeout_us == 0) return false;*/
+	if (__forced == unforced)
+	while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+		delayMicroseconds(1);
+		timeout_us -= 1;
+	}
+  if (timeout_us == 0) return false;
 return true;
 }
 /*
