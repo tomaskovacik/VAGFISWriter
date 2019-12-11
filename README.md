@@ -1,6 +1,6 @@
 enhanced version of https://github.com/arildlangseid/vw_t4_tcu_temp_to_fis
 
-For supported function check <a href="">this wiki page</a>
+For supported function check <a href="https://github.com/tomaskovacik/VAGFISWriter/wiki/Supported-functions">this wiki page</a>
 
 credits: https://github.com/arildlangseid/vw_t4_tcu_temp_to_fis
 
