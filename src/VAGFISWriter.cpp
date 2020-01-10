@@ -112,7 +112,7 @@ uint8_t VAGFISWriter::sendMsg(char msg[]) {
   return sendRawData(tx_array);
 }
 
-void VAGFISWriter::initScreen(uint8_t mode,uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1) {
+void VAGFISWriter::initScreen(uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1,uint8_t mode) {
 /*
 ---------------------------
 | Initializing the screen |
@@ -169,19 +169,21 @@ To switch from the graphical mode to the standard one, you must send the initial
 
 
 void VAGFISWriter::reset(uint8_t mode){
-	VAGFISWriter::initScreen(mode,0,0,1,1);
+	VAGFISWriter::initScreen(0,0,1,1,mode);
+	VAGFISWriter::radioDisplayBlank();
+
 }
 
 void VAGFISWriter::initMiddleScreen(uint8_t mode){
-	VAGFISWriter::initScreen(mode,0,27,64,48);
+	VAGFISWriter::initScreen(0,27,64,48,mode);
 }
 
 void VAGFISWriter::initFullScreen(uint8_t mode){
-	VAGFISWriter::initScreen(mode,0,0,64,88);
+	VAGFISWriter::initScreen(0,0,64,88,mode);
 }
 
 void VAGFISWriter::initFullScreenFilled(){
-        VAGFISWriter::initScreen(0x83,0,0,64,88);
+        VAGFISWriter::initScreen(0,0,64,88,0x83);
 }
 
 
