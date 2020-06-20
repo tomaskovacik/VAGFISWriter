@@ -229,7 +229,7 @@ void loop() {
   delay(1000);
   fisWriter.initFullScreen();
   time = millis();
-  fisWriter.GraphicFromArray_P(0, 0, 64, 88, b5f_P, 1);
+  fisWriter.GraphicFromArray(0, 0, 64, 88, b5f_P, 1);
   time = millis() - time;
   delay(1000);
   fisWriter.initFullScreen();
