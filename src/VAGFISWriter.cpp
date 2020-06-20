@@ -387,17 +387,6 @@ memcpy(&tx_array[5],data,size);
 sendRawData(tx_array);
 }
 
-void VAGFISWriter::GraphicOut_P(uint8_t x,uint8_t y,uint16_t size,const char * const data,uint8_t mode){
-tx_array[0] = 0x55;
-tx_array[1] = size+4;
-tx_array[2] = mode;
-tx_array[3] = x;
-tx_array[4] = y;
-memcpy_P(&tx_array[5],data,size);
-sendRawData(tx_array);
-}
-
-
 uint8_t VAGFISWriter::sendRawData(char data[]){
 
 #ifdef ENABLE_IRQ
@@ -471,29 +460,6 @@ else
         }
 }
 }
-
-void VAGFISWriter::GraphicFromArray_P(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, const char * const data,uint8_t mode)
-{
-// 22x32bytes = 704 
-if (sizex == 64) // send jumbo packets
-{
-        for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
-                GraphicOut_P(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
-        }
-        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
-                uint8_t line = 4*(sizey/4);
-                GraphicOut_P(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
-        }
-}
-else
-{//stick to safe 1packet per line
-uint8_t packet_size = (sizex+7)/8; // how much byte per packet
-        for (uint8_t line = 0;line<sizey;line++){
-                GraphicOut_P(x,line+y,packet_size,data+(line*packet_size),mode);
-        }
-}
-}
-
 
 void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, char data[],uint8_t mode)
 {
