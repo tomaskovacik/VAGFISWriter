@@ -206,9 +206,9 @@ long time = 0;
 void loop() {
 
   fisWriter.initFullScreen();
-  fisWriter.sendStringFS(0, 4 * 8, F("graphics"));
-  fisWriter.sendStringFS(0, 5 * 8, F("from"));
-  fisWriter.sendStringFS(0, 6 * 8, F("memory"));
+  fisWriter.sendStringFS(0, 4 * 8, 0x21, F("graphics"));
+  fisWriter.sendStringFS(0, 5 * 8, 0x21, F("from"));
+  fisWriter.sendStringFS(0, 6 * 8, 0x21, F("memory"));
   delay(1000);
 
   fisWriter.initFullScreen();
@@ -217,15 +217,15 @@ void loop() {
   time = millis() - time;
   delay(1000);
   fisWriter.initFullScreen();
-  fisWriter.sendStringFS(0, 3 * 8, F("Rendering"));
-  fisWriter.sendStringFS(0, 4 * 8, F("time: "));
-  fisWriter.sendStringFS(0, 6 * 8, (String)time+"ms");
+  fisWriter.sendStringFS(0, 3 * 8, 0x21, F("Rendering"));
+  fisWriter.sendStringFS(0, 4 * 8, 0x21, F("time: "));
+  fisWriter.sendStringFS(0, 6 * 8, 0x21, (String)time+"ms");
   delay(3000);
 
   fisWriter.initFullScreen();
-  fisWriter.sendStringFS(0, 4 * 8, F("Graphics"));
-  fisWriter.sendStringFS(0, 5 * 8, F("from"));
-  fisWriter.sendStringFS(0, 6 * 8, F("flash"));
+  fisWriter.sendStringFS(0, 4 * 8, 0x21, F("Graphics"));
+  fisWriter.sendStringFS(0, 5 * 8, 0x21, F("from"));
+  fisWriter.sendStringFS(0, 6 * 8, 0x21, F("flash"));
   delay(1000);
   fisWriter.initFullScreen();
   time = millis();
@@ -233,8 +233,7 @@ void loop() {
   time = millis() - time;
   delay(1000);
   fisWriter.initFullScreen();
-  fisWriter.sendStringFS(0, 3 * 8, F("Rendering"));
-  fisWriter.sendStringFS(0, 4 * 8, F("time: "));
-  fisWriter.sendStringFS(0, 6 * 8, (String)time+"ms");
-  delay(3000);
+  fisWriter.sendStringFS(0, 3 * 8, 0x21, F("Rendering"));
+  fisWriter.sendStringFS(0, 4 * 8, 0x21, F("time: "));
+  fisWriter.sendStringFS(0, 6 * 8, 0x21, (String)time+"ms");
 }

@@ -16,32 +16,31 @@
 
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA );
 static char fisBuffer[10] = {'B', '5', ' ', 'F', 'A', 'M', 'I', 'L', 'I', 'A'} ;
-uint8_t frameBuffer[704];
 
 void lf() {
   for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {left_door[line]};
-    fisWriter.GraphicOut(15, line + 19, 1, tmpdata, 1, 0);
+    char tmpdata[1] = {left_door[line]};
+    fisWriter.GraphicOut(15, line + 19, 1, tmpdata, 1);
   }
 }
 
 void lr() {
   for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {left_door[line]};
-    fisWriter.GraphicOut(15, line + 19 + 8, 1, tmpdata, 1, 0);
+    char tmpdata[1] = {left_door[line]};
+    fisWriter.GraphicOut(15, line + 19 + 8, 1, tmpdata, 1);
   }
 }
 
 void rf() {
   for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {right_door[line]};
-    fisWriter.GraphicOut(41, line + 19, 1, tmpdata, 1, 0);
+    char tmpdata[1] = {right_door[line]};
+    fisWriter.GraphicOut(41, line + 19, 1, tmpdata, 1);
   }
 }
 void rr() {
   for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {right_door[line]};
-    fisWriter.GraphicOut(41, line + 19 + 8, 1, tmpdata, 1, 0);
+    char tmpdata[1] = {right_door[line]};
+    fisWriter.GraphicOut(41, line + 19 + 8, 1, tmpdata, 1);
   }
 }
 
@@ -54,14 +53,6 @@ void trunk_sedan() {
 
 void trunk() {
   trunk_sedan();
-}
-
-void redrawFrameBuffer() {
-  //fisWriter.GraphicFromArray(0,0,64,88,frameBuffer,1);
-  for (uint8_t line = 0; line < 88; line = line + 4) {
-    fisWriter.initScreen(0x82, 0, 0, 64, 88);
-    fisWriter.GraphicOut(0, line, 32, frameBuffer, 1, line * 8);
-  }
 }
 
 void setup() {
