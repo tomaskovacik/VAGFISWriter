@@ -36,12 +36,14 @@ class VAGFISWriter
     ~VAGFISWriter();
     void begin();
 
-    uint8_t sendMsg(char msg[]);
+    uint8_t sendMsg(char * msg);
+    uint8_t sendMsg(const char * msg);
     bool sendRadioMsg(char msg[16]);
     //bool sendRadioMsg(String msg);
     void sendString(String line1="", String line2="", bool center=true);
     void sendStringFS(int x, int y, uint8_t font, String line);
-    void sendMsgFS(uint8_t X,uint8_t Y,uint8_t font,uint8_t size,char msg[]);
+    void sendMsgFS(uint8_t X,uint8_t Y,uint8_t font,uint8_t size,char * msg);
+    void sendMsgFS(uint8_t X,uint8_t Y,uint8_t font,uint8_t size,const char * msg);
     void initScreen(uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1,uint8_t mode);
     void reset(uint8_t mode = 0x82);
     void initMiddleScreen(uint8_t mode = 0x82);
@@ -54,8 +56,10 @@ class VAGFISWriter
     void radioDisplayBlank();
     void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,char data[],uint8_t mode);
     void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,const char * const data,uint8_t mode);
+    void GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex,uint8_t sizey,const uint8_t * const data,uint8_t mode);
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, char data[],uint8_t mode);
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, const char * const data,uint8_t mode);
+    void GraphicOut(uint8_t x,uint8_t y, uint16_t size, const uint8_t* const data,uint8_t mode);
 
 //    void sendRadioData(void);
     void sendRadioData(uint8_t force = 0);

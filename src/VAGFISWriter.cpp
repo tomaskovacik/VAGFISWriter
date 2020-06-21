@@ -103,7 +103,7 @@ void VAGFISWriter::sendStringFS(int x, int y, uint8_t font, String line) {
   sendRawData(tx_array);
 }
 
-uint8_t VAGFISWriter::sendMsg(char msg[]) {
+uint8_t VAGFISWriter::sendMsg(char * msg) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
   tx_array[1] = 18; // Length of this message (command and this length not counted
@@ -111,6 +111,16 @@ uint8_t VAGFISWriter::sendMsg(char msg[]) {
   memcpy(&tx_array[3],msg,16);
   return sendRawData(tx_array);
 }
+
+uint8_t VAGFISWriter::sendMsg(const char * msg) {
+  // build tx_array
+  tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
+  tx_array[1] = 18; // Length of this message (command and this length not counted
+  tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
+  memcpy(&tx_array[3],msg,16);
+  return sendRawData(tx_array);
+}
+
 
 void VAGFISWriter::initScreen(uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1,uint8_t mode) {
 /*
@@ -187,7 +197,6 @@ void VAGFISWriter::initFullScreenFilled(){
 }
 
 
-void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char msg[]) {
 /*
 ----------------
 | Display text |
@@ -323,10 +332,22 @@ x is empty
 y is empty
 z is empty
 */
+void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char * msg) {
   // build tx_array
   tx_array[0] = 0x56; // command to set text-display in FIS
   tx_array[1] = size+4; // Length of this message (command and this length not counted
   tx_array[2] = font; 
+  tx_array[3] = X;
+  tx_array[4] = Y;
+  memcpy(&tx_array[5],msg,size);
+  sendRawData(tx_array);
+}
+
+void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,const char * msg) {
+  // build tx_array
+  tx_array[0] = 0x56; // command to set text-display in FIS
+  tx_array[1] = size+4; // Length of this message (command and this length not counted
+  tx_array[2] = font;
   tx_array[3] = X;
   tx_array[4] = Y;
   memcpy(&tx_array[5],msg,size);
@@ -378,6 +399,16 @@ sendRawData(tx_array);
 }
 
 void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,const char * const data,uint8_t mode){
+tx_array[0] = 0x55;
+tx_array[1] = size+4;
+tx_array[2] = mode;
+tx_array[3] = x;
+tx_array[4] = y;
+memcpy(&tx_array[5],data,size);
+sendRawData(tx_array);
+}
+
+void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,const uint8_t * const data,uint8_t mode){
 tx_array[0] = 0x55;
 tx_array[1] = size+4;
 tx_array[2] = mode;
@@ -460,6 +491,29 @@ else
         }
 }
 }
+
+void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey,const uint8_t * const data,uint8_t mode)
+{
+// 22x32bytes = 704 
+if (sizex == 64) // send jumbo packets
+{
+        for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
+                GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
+        }
+        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
+                uint8_t line = 4*(sizey/4);
+                GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
+        }
+}
+else
+{//stick to safe 1packet per line
+        uint8_t packet_size = (sizex+7)/8; // how much byte per packet
+        for (uint8_t line = 0;line<sizey;line++){
+                GraphicOut(x,line+y,packet_size,data+(line*packet_size),mode);
+        }
+}
+}
+
 
 void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, char data[],uint8_t mode)
 {
@@ -621,7 +675,7 @@ digitalWrite(_FIS_WRITE_DATA,LOW);
 */
 uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
   uint8_t crc = in_msg[0];
-  for (int16_t i = 1; i < sizeof(in_msg); i++)
+  for (int16_t i = 1; i < 18; i++) //used only in sendString(String line1, String line2, bool center) and that is fixed size array of 18bytes
   {
     crc ^= in_msg[i];
   }

@@ -19,27 +19,27 @@ static char fisBuffer[10] = {'B', '5', ' ', 'F', 'A', 'M', 'I', 'L', 'I', 'A'} ;
 
 void lf() {
   for (uint8_t line = 0; line < 8; line++) {
-    char tmpdata[1] = {left_door[line]};
+    uint8_t tmpdata[1] = {left_door[line]};
     fisWriter.GraphicOut(15, line + 19, 1, tmpdata, 1);
   }
 }
 
 void lr() {
   for (uint8_t line = 0; line < 8; line++) {
-    char tmpdata[1] = {left_door[line]};
+    uint8_t tmpdata[1] = {left_door[line]};
     fisWriter.GraphicOut(15, line + 19 + 8, 1, tmpdata, 1);
   }
 }
 
 void rf() {
   for (uint8_t line = 0; line < 8; line++) {
-    char tmpdata[1] = {right_door[line]};
+    uint8_t tmpdata[1] = {right_door[line]};
     fisWriter.GraphicOut(41, line + 19, 1, tmpdata, 1);
   }
 }
 void rr() {
   for (uint8_t line = 0; line < 8; line++) {
-    char tmpdata[1] = {right_door[line]};
+    uint8_t tmpdata[1] = {right_door[line]};
     fisWriter.GraphicOut(41, line + 19 + 8, 1, tmpdata, 1);
   }
 }
