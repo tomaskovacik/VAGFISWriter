@@ -726,7 +726,7 @@ if(digitalRead(_FIS_WRITE_ENA)){
 
 void VAGFISWriter::enableGoesLow(void)
 {
-	if(digitalRead(_FIS_WRITE_ENA)){
+	if(!digitalRead(_FIS_WRITE_ENA)){ //we should check for LOW state
 		_sendOutData=1;//cluster acknowleage previously received packet
 		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
