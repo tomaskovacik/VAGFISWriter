@@ -28,6 +28,9 @@
     static uint8_t _FIS_WRITE_DATA;
     static char _radioData[16];
     static uint8_t _radioDataOK=0;
+    static volatile uint8_t sendingNaviData=0; //used to indicate if we are sending out packet so we we do not overwrite data in packet array while they are sent
+    static volatile uint8_t sendingNavibytePtr=0;
+    static volatile char tx_array[64];
 
 class VAGFISWriter
 {
@@ -50,7 +53,7 @@ class VAGFISWriter
     void initFullScreen(uint8_t mode = 0x82);
     void initFullScreenFilled();
     //void sendRawMsg(char in_msg[]);
-    uint8_t sendRawData(char data[]);
+    uint8_t sendRawData();
     void sendKeepAliveMsg();
     void radioDisplayOff();
     void radioDisplayBlank();

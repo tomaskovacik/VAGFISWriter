@@ -68,7 +68,7 @@ void VAGFISWriter::begin() {
 
 
 
-static char tx_array[64];
+
 
 void VAGFISWriter::sendString(String line1, String line2, bool center) {
   line1.toUpperCase();
@@ -418,45 +418,6 @@ memcpy(&tx_array[5],data,size);
 sendRawData(tx_array);
 }
 
-uint8_t VAGFISWriter::sendRawData(char data[]){
-
-#ifdef ENABLE_IRQ
-  cli();
-#endif
-  // Send FIS-command
-  if(__forced==unforced){
-  if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
-
-  if(!waitEnaHigh(100)) {
-  delay(2);
-  return sendRawData(data);
-  }
-  } else 
-     sendByte(data[FIS_MSG_COMMAND]);
-  
-  uint8_t crc =data[FIS_MSG_COMMAND];
-  for (uint16_t a=1;a<data[1]+1;a++)
-  {
-  // calculate checksum
-  crc ^= data[a];
-  // Step 2 - wait for response from cluster to set ENA-High
-  sendByte(data[a]);
-  // wait for response from cluster to set ENA LOW
-  if(!waitEnaLow()) return false;
-  // Step 10.2 - wait for response from cluster to set ENA-High
-  if(!waitEnaHigh()) return false;
-  }
-  crc--;
-  sendByte(crc);
-  if (__forced==forced) delay(3);
-  
-  if(!waitEnaLow()) return false;
-
-#ifdef ENABLE_IRQ
-  sei();
-#endif
-return true;
-}
 /**
  * GraphicFromArray(x,y,sizex,sizey,data,mode)
  *
@@ -557,6 +518,26 @@ char blank[16] = {32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32
 VAGFISWriter::sendMsg(blank);
 }
 
+/*
+
+	if interupt driven, then this should only sent ID (1st byte of packet) 
+	other bytes will be then requested by cluster and send in ISR
+	this will be fired based on timer ISR which send out same data after 1s interval or
+	it will send keapalive? 
+
+*/
+void VAGFISWriter::sendRawData(){
+
+  // Send ID
+  if (sendSingleByteCommand(tx_array[FIS_MSG_COMMAND])){
+	sendingNavibytePtr=1;
+	sendingNaviData=1;
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	return true;
+  }
+	return false;
+}
+
 /**
 
    Send Single-Command out on 3LB port to instrument cluster
@@ -571,11 +552,34 @@ uint8_t VAGFISWriter::sendSingleByteCommand(uint8_t txByte) {
 	startENA();
 	sendByte(txByte);
 	stopENA();
-  	if(!waitEnaLow(100)) return false; //based on real comunication cluster responce is around 65us
+	//we use interrupt for this 
+	//if(!waitEnaLow(100)) return false; //based on real comunication cluster responce is around 65us
 #ifdef ENABLE_IRQ
   sei();
 #endif
 //if we are here, we are fine ...
+return true;
+}
+
+
+uint8_t VAGFISWriter::waitEnaHigh(uint16_t timeout_us)
+{
+	if (__forced == unforced)
+	while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+		delayMicroseconds(1);
+		timeout_us -= 1;
+	}
+  if (timeout_us == 0) return false;
+return true;
+}
+
+uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
+	if (__forced == unforced)
+	while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+		delayMicroseconds(1);
+		timeout_us -= 1;
+	}
+  if (timeout_us == 0) return false;
 return true;
 }
 
@@ -587,7 +591,7 @@ return true;
 void VAGFISWriter::sendByte(uint8_t in_byte) {
 	if (__forced == forced) startENA();
 	uint8_t tx_byte = 0xff - in_byte;
-	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
+	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing, or we can have here i=8 and i-1 in loop?:)
 
 		switch ((tx_byte & (1 << i)) > 0 ) {
 			case 1: setDataHigh();
@@ -683,26 +687,6 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
   return crc;
 }
 
-uint8_t VAGFISWriter::waitEnaHigh(uint16_t timeout_us)
-{
-	if (__forced == unforced)
-	while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-		delayMicroseconds(1);
-		timeout_us -= 1;
-	}
-  if (timeout_us == 0) return false;
-return true;
-}
-
-uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
-	if (__forced == unforced)
-	while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-		delayMicroseconds(1);
-		timeout_us -= 1;
-	}
-  if (timeout_us == 0) return false;
-return true;
-}
 /*
 bool VAGFISWriter::sendRadioMsg(char msg[16]){
 if(!waitEnaLow()) return false;
