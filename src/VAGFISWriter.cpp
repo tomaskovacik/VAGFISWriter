@@ -42,7 +42,6 @@ VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint
   _FIS_WRITE_DATA = dataPin;
   _FIS_WRITE_ENA = enaPin;
   __forced = force_mode;
-
 }
 
 /**
@@ -58,7 +57,6 @@ VAGFISWriter::~VAGFISWriter()
 
 */
 void VAGFISWriter::begin() {
-//pinMode(5,OUTPUT);
   stopENA();
   pinMode(_FIS_WRITE_CLK, OUTPUT);
   setClockLow();
@@ -439,7 +437,7 @@ if (sizex == 64) // send jumbo packets
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
                 GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
         }
-        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
+        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to be sent
                 uint8_t line = 4*(sizey/4);
                 GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
         }
@@ -461,7 +459,7 @@ if (sizex == 64) // send jumbo packets
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
                 GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
         }
-        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
+        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to be sent
                 uint8_t line = 4*(sizey/4);
                 GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
         }
@@ -484,7 +482,7 @@ if (sizex == 64) // send jumbo packets
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
                 GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,&data[line*JUMBO_PACKET_SIZE],mode);//4=32/8
         }
-	if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
+	if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to be sent
 		uint8_t line = 4*(sizey/4);
                 GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,&data[line*8],mode);//4=32/8
         }
