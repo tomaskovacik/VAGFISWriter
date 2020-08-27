@@ -732,13 +732,13 @@ void VAGFISWriter::enableGoesLow(void)
 	}
 }
 
-void VAGFISWriter::sendRadioData(uint8_t forced)
+void VAGFISWriter::sendRadioData(uint8_t force)
 {
 	if (__forced == forced){
-		forced = 1;
-		__forced = forced_backup;
+		force = 1;
+		__forced = forced_disable_temporary;
 	}
-	if (forced)  _sendOutData=1;
+	if (force)  _sendOutData=1;
 	else delay(100); //in future we will use timer for this ...
   
 	if (_radioDataOK && _sendOutData)
@@ -756,7 +756,7 @@ void VAGFISWriter::sendRadioData(uint8_t forced)
 	sendByte(0xFF ^ crc);
 	stopENA();
 	_sendOutData=0;
-	if (__forced == forced_backup) __forced == forced;
+	if (__forced == forced_disable_temporary) __forced == forced;
 	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }

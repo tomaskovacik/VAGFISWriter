@@ -85,7 +85,7 @@ class VAGFISWriter
     enum FORCE_MODE {
         unforced,
         forced,
-        forced_backup
+        forced_disable_temporary
         };
     uint8_t __forced=unforced;
 };
