@@ -42,6 +42,7 @@ VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint
   _FIS_WRITE_DATA = dataPin;
   _FIS_WRITE_ENA = enaPin;
   __forced = force_mode;
+  txAptr = tx_array;
 }
 
 /**
@@ -85,7 +86,7 @@ void VAGFISWriter::sendString(String line1, String line2, bool center) {
   if (tx_array[18] == 32 && !center) tx_array[18] = 28; // set last char to 28 if not center
   tx_array[19] = (char)checkSum((uint8_t*)tx_array);
 
-  sendRawData(tx_array);
+  sendRawData();
 
 }
 
@@ -98,7 +99,7 @@ void VAGFISWriter::sendStringFS(int x, int y, uint8_t font, String line) {
   tx_array[3] = x;
   tx_array[4] = y;
   line.toCharArray(&tx_array[5], line.length() + 1);
-  sendRawData(tx_array);
+  sendRawData();
 }
 
 uint8_t VAGFISWriter::sendMsg(char * msg) {
@@ -107,7 +108,7 @@ uint8_t VAGFISWriter::sendMsg(char * msg) {
   tx_array[1] = 18; // Length of this message (command and this length not counted
   tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
   memcpy(&tx_array[3],msg,16);
-  return sendRawData(tx_array);
+  return sendRawData();
 }
 
 uint8_t VAGFISWriter::sendMsg(const char * msg) {
@@ -116,7 +117,7 @@ uint8_t VAGFISWriter::sendMsg(const char * msg) {
   tx_array[1] = 18; // Length of this message (command and this length not counted
   tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
   memcpy(&tx_array[3],msg,16);
-  return sendRawData(tx_array);
+  return sendRawData();
 }
 
 
@@ -171,7 +172,7 @@ To switch from the graphical mode to the standard one, you must send the initial
   tx_array[4] = Y;
   tx_array[5] = X1;
   tx_array[6] = Y1;
-  sendRawData(tx_array);
+  sendRawData();
   if (X==0 && Y==0 && X1==1 && Y1==1) delay(25); //18ms pulse from cluster, probably ack that screen is out of graphix mode..
 }
 
@@ -338,7 +339,7 @@ void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char
   tx_array[3] = X;
   tx_array[4] = Y;
   memcpy(&tx_array[5],msg,size);
-  sendRawData(tx_array);
+  sendRawData();
 }
 
 void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,const char * msg) {
@@ -349,7 +350,7 @@ void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,cons
   tx_array[3] = X;
   tx_array[4] = Y;
   memcpy(&tx_array[5],msg,size);
-  sendRawData(tx_array);
+  sendRawData();
 }
 
 /*
@@ -393,7 +394,7 @@ tx_array[2] = mode;
 tx_array[3] = x;
 tx_array[4] = y;
 memcpy(&tx_array[5],data,size);
-sendRawData(tx_array);
+sendRawData();
 }
 
 void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,const char * const data,uint8_t mode){
@@ -403,7 +404,7 @@ tx_array[2] = mode;
 tx_array[3] = x;
 tx_array[4] = y;
 memcpy(&tx_array[5],data,size);
-sendRawData(tx_array);
+sendRawData();
 }
 
 void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,const uint8_t * const data,uint8_t mode){
@@ -413,7 +414,7 @@ tx_array[2] = mode;
 tx_array[3] = x;
 tx_array[4] = y;
 memcpy(&tx_array[5],data,size);
-sendRawData(tx_array);
+sendRawData();
 }
 
 /**
@@ -525,9 +526,10 @@ VAGFISWriter::sendMsg(blank);
 
 */
 void VAGFISWriter::sendRawData(){
-
   // Send ID
-  if (sendSingleByteCommand(tx_array[FIS_MSG_COMMAND])){
+  if (sendSingleByteCommand(tx_array[FIS_MSG_COMMAND])){ //1st byte send fine, lets start show
+	tx_array[FIS_MSG_LENGTH]++;
+	tx_array[tx_array[FIS_MSG_LENGTH]] = checkSum();
 	sendingNavibytePtr=1;
 	sendingNaviData=1;
 	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
@@ -675,11 +677,11 @@ digitalWrite(_FIS_WRITE_DATA,LOW);
    example: uint8_t msg[] = {18, 240, 32, 78, 82, 75, 32, 80, 49, 32, 70, 77, 49, 46, 49, 32, 32, 28};
 
 */
-uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
-  uint8_t crc = in_msg[0];
-  for (int16_t i = 1; i < 18; i++) //used only in sendString(String line1, String line2, bool center) and that is fixed size array of 18bytes
+uint8_t VAGFISWriter::checkSum() {
+  uint8_t crc = tx_array[FIS_MSG_COMMAND]
+  for (int16_t i = 1; i < tx_array[FIS_MSG_LENGTH]+1; i++) //used only in sendString(String line1, String line2, bool center) and that is fixed size array of 18bytes
   {
-    crc ^= in_msg[i];
+    crc ^= tx_array[i];
   }
   crc --;
   return crc;
@@ -719,12 +721,15 @@ void VAGFISWriter::enableGoesHigh(void)
 {
 if(digitalRead(_FIS_WRITE_ENA)){
 	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesLow,FALLING);
+	sengByte(tx_array[sendingNavibytePtr];
 }
 }
 
 void VAGFISWriter::enableGoesLow(void)
 {
 	if(!digitalRead(_FIS_WRITE_ENA)){ //we should check for LOW state
+		sendingNavibytePtr++;//increment to next byte in packet, also should use real pointer here 
+		if (sendingNavibytePtr == tx_array[FIS_MSG_LENGTH]) return; // done
 		_sendOutData=1;//cluster acknowleage previously received packet
 		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}

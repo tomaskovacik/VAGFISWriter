@@ -81,13 +81,16 @@ class VAGFISWriter
     void setDataLow();
     uint8_t waitEnaHigh( uint16_t timeout_us = 1500);
     uint8_t waitEnaLow( uint16_t timeout_us = 1500);
-    uint8_t checkSum( volatile uint8_t in_msg[]);
+    uint8_t checkSum();
     enum FORCE_MODE {
         unforced,
         forced,
         forced_disable_temporary
         };
     uint8_t __forced=unforced;
+    static char tx_array[64];
+    static char *txAptr;
+    static char *crc;
 };
 
 
