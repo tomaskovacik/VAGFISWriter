@@ -721,7 +721,7 @@ stopENA();
 return true;
 }*/
 
-bool VAGFISWriter::sendRadioMsg(char * msg)
+void VAGFISWriter::sendRadioMsg(char * msg)
 {
 	_radioDataOK=0;
 	memcpy(&_radioData,msg,16);

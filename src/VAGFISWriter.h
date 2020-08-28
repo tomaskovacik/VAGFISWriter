@@ -38,7 +38,7 @@ class VAGFISWriter
 
     uint8_t sendMsg(char * msg);
     uint8_t sendMsg(const char * msg);
-    bool sendRadioMsg(char msg[16]);
+    void sendRadioMsg(char msg[16]);
     //bool sendRadioMsg(String msg);
     void sendString(String line1="", String line2="", bool center=true);
     void sendStringFS(int x, int y, uint8_t font, String line);
