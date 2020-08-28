@@ -770,7 +770,7 @@ void VAGFISWriter::sendRadioData(uint8_t force)
 	sendByte(0xFF ^ crc);
 	stopENA();
 	_sendOutData=0;
-	if (__forced == forced_disable_temporary) __forced == forced;
+	if (__forced == forced_disable_temporary) __forced = forced;
 	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }
