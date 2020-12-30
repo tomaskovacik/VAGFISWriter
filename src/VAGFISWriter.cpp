@@ -434,7 +434,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   }
   
   uint8_t crc =data[FIS_MSG_COMMAND];
-  for (char a=1;a<data[1]+1;a++)
+  for (int8_t a=1;a<data[1]+1;a++)
   {
   // calculate checksum
   crc ^= data[a];
@@ -589,7 +589,6 @@ return true;
 
 */
 void VAGFISWriter::sendByte(uint8_t in_byte) {
-	if (!__singleENA) startENA();
 	uint8_t tx_byte = 0xff - in_byte;
 	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
 
@@ -605,9 +604,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 		setClockHigh();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 	}
-	if (!__singleENA)
-		stopENA();
-	delayMicroseconds(80);
+	if (__singleENA) delayMicroseconds(80);
 }
 
 /**
@@ -627,19 +624,12 @@ void VAGFISWriter::startENA() {
 
 */
 void VAGFISWriter::stopENA() {
-  if (!__singleENA)
-  {
-    detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+    if (!__singleENA) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
     //digitalWrite(_FIS_WRITE_ENA, LOW);
     pinMode(_FIS_WRITE_ENA, INPUT);
     //digitalWrite(_FIS_WRITE_ENA, LOW);
-    attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
-  }
-  else
-  {
-    digitalWrite(_FIS_WRITE_ENA, LOW);
-    delayMicroseconds(100);
-  }
+    if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+    //delayMicroseconds(100);
 }
 
 /**
