@@ -412,7 +412,7 @@ tx_array[1] = size+4;
 tx_array[2] = mode;
 tx_array[3] = x;
 tx_array[4] = y;
-memcpy(&tx_array[5],data,size);
+memcpy_P(&tx_array[5],data,size);
 sendRawData(tx_array);
 }
 
