@@ -36,12 +36,11 @@ Unfortunately, in this mode, it is not possible to control the transmitted data.
 /**
    Constructor
 */
-VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t force_mode, uint8_t single_pulse_on_enable_line)
+VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin,uint8_t single_pulse_on_enable_line)
 {
   _FIS_WRITE_CLK = clkPin;
   _FIS_WRITE_DATA = dataPin;
   _FIS_WRITE_ENA = enaPin;
-  __forced = force_mode;
   __singleENA = single_pulse_on_enable_line;
 }
 
@@ -423,23 +422,19 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   cli();
 #endif
   // Send FIS-command
-  if(__forced==unforced){
-  if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
-
-  if(!waitEnaHigh(100)) {
-  delay(2);
-  return sendRawData(data);
-  }
-  }
-  if (__forced==forced)
-     sendByte(data[FIS_MSG_COMMAND]);
   if (__singleENA){
-	startENA();
-	sendByte(data[FIS_MSG_COMMAND]);
+        startENA();
+        sendByte(data[FIS_MSG_COMMAND]);
+  } else {
+        if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
+  	if(!waitEnaHigh(100)) {
+  		delay(2);
+		return sendRawData(data);
+	  }
   }
   
   uint8_t crc =data[FIS_MSG_COMMAND];
-  for (uint16_t a=1;a<data[1]+1;a++)
+  for (char a=1;a<data[1]+1;a++)
   {
   // calculate checksum
   crc ^= data[a];
@@ -452,9 +447,14 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   }
   crc--;
   sendByte(crc);
-  if (__forced==forced) delay(3);
-  if (__singleENA) stopENA();
-  if(!waitEnaLow()) return false;
+  if (__singleENA) {
+	  stopENA();
+	  delay(3);
+  }
+
+  if(!waitEnaLow()) {
+	  return false;
+  }
 
 #ifdef ENABLE_IRQ
   sei();
@@ -589,7 +589,7 @@ return true;
 
 */
 void VAGFISWriter::sendByte(uint8_t in_byte) {
-	if (__forced == forced) startENA();
+	if (!__singleENA) startENA();
 	uint8_t tx_byte = 0xff - in_byte;
 	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
 
@@ -605,10 +605,9 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 		setClockHigh();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 	}
-	if (__forced == forced){
+	if (!__singleENA)
 		stopENA();
-		delayMicroseconds(80);
-	}
+	delayMicroseconds(80);
 }
 
 /**
@@ -617,7 +616,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 
 */
 void VAGFISWriter::startENA() {
-  if (__forced == unforced || __singleENA) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+  if (!__singleENA) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
   digitalWrite(_FIS_WRITE_ENA, HIGH);// avoid spikes
   pinMode(_FIS_WRITE_ENA, OUTPUT);
   digitalWrite(_FIS_WRITE_ENA, HIGH);
@@ -628,7 +627,7 @@ void VAGFISWriter::startENA() {
 
 */
 void VAGFISWriter::stopENA() {
-  if (__forced == unforced)
+  if (!__singleENA)
   {
     detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
     //digitalWrite(_FIS_WRITE_ENA, LOW);
@@ -689,7 +688,7 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
 
 uint8_t VAGFISWriter::waitEnaHigh(uint16_t timeout_us)
 {
-	if (__forced == unforced)
+	if (!__singleENA)
 	while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
 		delayMicroseconds(1);
 		timeout_us -= 1;
@@ -699,7 +698,7 @@ return true;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
-	if (__forced == unforced)
+	if (!__singleENA)
 	while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
 		delayMicroseconds(1);
 		timeout_us -= 1;
@@ -754,7 +753,7 @@ void VAGFISWriter::enableGoesLow(void)
 
 void VAGFISWriter::sendRadioData(uint8_t force)
 {
-	if (__forced == forced){
+	if (__singleENA){
 		force = 1;
 		__forced = forced_disable_temporary;
 	}
@@ -776,7 +775,6 @@ void VAGFISWriter::sendRadioData(uint8_t force)
 	sendByte(0xFF ^ crc);
 	stopENA();
 	_sendOutData=0;
-	if (__forced == forced_disable_temporary) __forced = forced;
-	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }

@@ -32,7 +32,7 @@
 class VAGFISWriter
 {
   public:
-    VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t forced_mode=unforced, uint8_t single_pulse_on_enable_line=0);
+    VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin,uint8_t single_pulse_on_enable_line=0);
     ~VAGFISWriter();
     void begin();
 
