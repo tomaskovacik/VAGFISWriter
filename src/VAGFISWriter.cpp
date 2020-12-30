@@ -36,12 +36,13 @@ Unfortunately, in this mode, it is not possible to control the transmitted data.
 /**
    Constructor
 */
-VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t force_mode)
+VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t force_mode, uint8_t single_pulse_on_enable_line)
 {
   _FIS_WRITE_CLK = clkPin;
   _FIS_WRITE_DATA = dataPin;
   _FIS_WRITE_ENA = enaPin;
   __forced = force_mode;
+  __singleENA = single_pulse_on_enable_line;
 }
 
 /**
@@ -429,8 +430,13 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   delay(2);
   return sendRawData(data);
   }
-  } else 
+  }
+  if (__forced==forced)
      sendByte(data[FIS_MSG_COMMAND]);
+  if (__singleENA){
+	startENA();
+	sendByte(data[FIS_MSG_COMMAND]);
+  }
   
   uint8_t crc =data[FIS_MSG_COMMAND];
   for (uint16_t a=1;a<data[1]+1;a++)
@@ -447,7 +453,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   crc--;
   sendByte(crc);
   if (__forced==forced) delay(3);
-  
+  if (__singleENA) stopENA();
   if(!waitEnaLow()) return false;
 
 #ifdef ENABLE_IRQ
@@ -455,6 +461,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 #endif
 return true;
 }
+
 /**
  * GraphicFromArray(x,y,sizex,sizey,data,mode)
  *
@@ -511,7 +518,6 @@ else
         }
 }
 }
-
 
 void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, char data[],uint8_t mode)
 {
@@ -611,7 +617,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 
 */
 void VAGFISWriter::startENA() {
-  if (__forced == unforced) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+  if (__forced == unforced || __singleENA) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
   digitalWrite(_FIS_WRITE_ENA, HIGH);// avoid spikes
   pinMode(_FIS_WRITE_ENA, OUTPUT);
   digitalWrite(_FIS_WRITE_ENA, HIGH);
@@ -621,7 +627,7 @@ void VAGFISWriter::startENA() {
    Set 3LB ENA as input (so low, as we should have pulldown on ena line)
 
 */
-uint8_t VAGFISWriter::stopENA() {
+void VAGFISWriter::stopENA() {
   if (__forced == unforced)
   {
     detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));

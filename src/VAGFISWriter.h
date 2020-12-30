@@ -32,7 +32,7 @@
 class VAGFISWriter
 {
   public:
-    VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t forced_mode=unforced);
+    VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t forced_mode=unforced, uint8_t single_pulse_on_enable_line=0);
     ~VAGFISWriter();
     void begin();
 
@@ -71,7 +71,7 @@ class VAGFISWriter
     void sendEnablePulse();
     void sendByte(uint8_t in_byte);
     void startENA();
-    uint8_t stopENA();
+    void stopENA();
     void setClockHigh();
     void setClockLow();
     void setDataHigh();
@@ -85,6 +85,7 @@ class VAGFISWriter
         forced_disable_temporary
         };
     uint8_t __forced=unforced;
+    uint8_t __singleENA=0;
 };
 
 
