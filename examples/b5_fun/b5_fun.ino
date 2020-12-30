@@ -14,34 +14,24 @@
 #define FIS_CLK 6
 #define FIS_DATA 7
 
-VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA );
+//CLK,DATA,ENA pin, forcemode=0/1
+VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA, 0);
 static char fisBuffer[10] = {'B', '5', ' ', 'F', 'A', 'M', 'I', 'L', 'I', 'A'} ;
 
 void lf() {
-  for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {left_door[line]};
-    fisWriter.GraphicOut(15, line + 19, 1, tmpdata, 1);
-  }
+
+    fisWriter.GraphicFromArray(15, 19, 8, 8, left_door, 1);
 }
 
 void lr() {
-  for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {left_door[line]};
-    fisWriter.GraphicOut(15, line + 19 + 8, 1, tmpdata, 1);
-  }
+    fisWriter.GraphicFromArray(15, 27, 8, 8, left_door, 1);
 }
 
 void rf() {
-  for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {right_door[line]};
-    fisWriter.GraphicOut(41, line + 19, 1, tmpdata, 1);
-  }
+    fisWriter.GraphicFromArray(41, 19, 8, 8, right_door, 1);
 }
 void rr() {
-  for (uint8_t line = 0; line < 8; line++) {
-    uint8_t tmpdata[1] = {right_door[line]};
-    fisWriter.GraphicOut(41, line + 19 + 8, 1, tmpdata, 1);
-  }
+    fisWriter.GraphicFromArray(41, 27, 8, 8, right_door, 1);
 }
 
 void trunk_avant() {
@@ -67,10 +57,10 @@ void loop() {
   fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 1);
   delay(3000);
   //inverted
-//  fisWriter.initFullScreenFilled();
+  fisWriter.initFullScreenFilled();
   //draw mode = 1, only 0 from data are used 
-//  fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 0);
-//  delay(3000);
+  fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 0);
+  delay(3000);
   fisWriter.initFullScreenFilled();
   //draw mode = 1, only 0 from data are used 
   fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 1);
