@@ -748,7 +748,7 @@ void VAGFISWriter::enableGoesLow(void)
  */
 void VAGFISWriter::sendRadioData(uint8_t force)
 {
-	if (!_singleENA) delay(100); //in future we will use timer for this ... 
+	if (!__singleENA) delay(100); //in future we will use timer for this ... 
   
 	if (_radioDataOK && (force || __singleENA))
 	{
