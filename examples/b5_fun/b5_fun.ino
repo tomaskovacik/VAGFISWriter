@@ -1,8 +1,6 @@
 #include "VAGFISWriter.h"
 #include "bitmaps.h"
 
-#define MinRefresh 100
-
 // FIS
 //stm32
 //#define FIS_CLK PB3
@@ -16,10 +14,8 @@
 
 //CLK,DATA,ENA pin, forcemode=0/1
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA, 0);
-static char fisBuffer[10] = {'B', '5', ' ', 'F', 'A', 'M', 'I', 'L', 'I', 'A'} ;
 
 void lf() {
-
     fisWriter.GraphicFromArray(15, 19, 8, 8, left_door, 1);
 }
 
