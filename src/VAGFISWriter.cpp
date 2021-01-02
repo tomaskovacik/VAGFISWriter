@@ -740,6 +740,12 @@ void VAGFISWriter::enableGoesLow(void)
 	}
 }
 
+/*
+ * if __singleENA is set, interrupts are disabled, so we should run this periodicaly from main loop or from timer ISR
+ * using __sinleENA means we have something broken and cluster did to ack packets on ENA line
+ * we have no way to know that we can send another data 
+ *
+ */
 void VAGFISWriter::sendRadioData(uint8_t force)
 {
 	else delay(100); //in future we will use timer for this ...
