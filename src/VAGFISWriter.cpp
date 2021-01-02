@@ -736,21 +736,15 @@ if(digitalRead(_FIS_WRITE_ENA)){
 void VAGFISWriter::enableGoesLow(void)
 {
 	if(!digitalRead(_FIS_WRITE_ENA)){ //we should check for LOW state
-		_sendOutData=1;//cluster acknowleage previously received packet
-		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);//no need for if (__singleENA) here, interupts are not initialized if this flag is used
 	}
 }
 
 void VAGFISWriter::sendRadioData(uint8_t force)
 {
-	if (__singleENA){
-		force = 1;
-		__forced = forced_disable_temporary;
-	}
-	if (force)  _sendOutData=1;
 	else delay(100); //in future we will use timer for this ...
   
-	if (_radioDataOK && _sendOutData)
+	if (_radioDataOK && (force || __singleENA))
 	{
 	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
 	startENA();
@@ -764,7 +758,6 @@ void VAGFISWriter::sendRadioData(uint8_t force)
 	}
 	sendByte(0xFF ^ crc);
 	stopENA();
-	_sendOutData=0;
 	if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }

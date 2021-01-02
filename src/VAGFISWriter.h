@@ -22,7 +22,6 @@
 
 #define JUMBO_PACKET_SIZE 32
 
-    static volatile uint8_t _sendOutData;
     static uint8_t _FIS_WRITE_ENA;
     static uint8_t _FIS_WRITE_CLK;
     static uint8_t _FIS_WRITE_DATA;
@@ -79,12 +78,6 @@ class VAGFISWriter
     uint8_t waitEnaHigh( uint16_t timeout_us = 1500);
     uint8_t waitEnaLow( uint16_t timeout_us = 1500);
     uint8_t checkSum( volatile uint8_t in_msg[]);
-    enum FORCE_MODE {
-        unforced,
-        forced,
-        forced_disable_temporary
-        };
-    uint8_t __forced=unforced;
     uint8_t __singleENA=0;
 };
 
