@@ -14,8 +14,8 @@ width = 64, height=88
 
 videos of VAGFISWriter in action:
 
-https://youtu.be/cLox4ijMDg8
+[VAGFISWriter 1.1](https://odysee.com/@tomaskovacik:9/vagfiswriter-1-1:8?r=Hhrweg5Vp56SqqmmcDxn3QPq9fvHPz8H)
 
-https://youtu.be/AvmKIBc_7DA
+[VAGFISWriter 1.1 speed test](https://odysee.com/@tomaskovacik:9/vagfiswriter-1-1-speed-test:a?r=Hhrweg5Vp56SqqmmcDxn3QPq9fvHPz8H)
 
 
