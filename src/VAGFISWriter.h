@@ -60,8 +60,7 @@ class VAGFISWriter
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, const char * const data,uint8_t mode);
     void GraphicOut(uint8_t x,uint8_t y, uint16_t size, const uint8_t* const data,uint8_t mode);
 
-//    void sendRadioData(void);
-    void sendRadioData(uint8_t force = 0);
+    void sendRadioData(void);
     static void enableGoesHigh(void);
     static void enableGoesLow(void);
     private:

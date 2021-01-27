@@ -628,7 +628,7 @@ void VAGFISWriter::stopENA() {
     //digitalWrite(_FIS_WRITE_ENA, LOW);
     pinMode(_FIS_WRITE_ENA, INPUT);
     //digitalWrite(_FIS_WRITE_ENA, LOW);
-    if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+//    if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
     //delayMicroseconds(100);
 }
 
@@ -722,7 +722,7 @@ void VAGFISWriter::sendRadioMsg(char * msg)
 	memcpy(&_radioData,msg,16);
 
 	_radioDataOK=1;
-	VAGFISWriter::sendRadioData(1);//force 1st packet
+	VAGFISWriter::sendRadioData();//force 1st packet
 }
 
 
@@ -735,9 +735,10 @@ if(digitalRead(_FIS_WRITE_ENA)){
 
 void VAGFISWriter::enableGoesLow(void)
 {
-	if(!digitalRead(_FIS_WRITE_ENA)){ //we should check for LOW state
-		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);//no need for if (__singleENA) here, interupts are not initialized if this flag is used
-	}
+//	if(!digitalRead(_FIS_WRITE_ENA)){ //we should check for LOW state
+//		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);//no need for if (__singleENA) here, interupts are not initialized if this flag is used
+//	}
+	_radioDataOK=1;
 }
 
 /*
@@ -746,13 +747,18 @@ void VAGFISWriter::enableGoesLow(void)
  * we have no way to know that we can send another data 
  *
  */
-void VAGFISWriter::sendRadioData(uint8_t force)
+void VAGFISWriter::sendRadioData()
 {
-	if (!__singleENA) delay(100); //in future we will use timer for this ... 
+	if (!__singleENA) {
+	//	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA)); //disabled in startENA
+		delay(100); //in future we will use timer for this ...
+		Serial.println(_radioDataOK);
+	} else {
+		_radioDataOK=1;
+	}
   
-	if (_radioDataOK && (force || __singleENA))
+	if (_radioDataOK)
 	{
-	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
 	startENA();
 	uint8_t crc=0xF0;
 	sendByte(0xF0); 
@@ -764,6 +770,7 @@ void VAGFISWriter::sendRadioData(uint8_t force)
 	}
 	sendByte(0xFF ^ crc);
 	stopENA();
+	_radioDataOK=0;
 	if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }
