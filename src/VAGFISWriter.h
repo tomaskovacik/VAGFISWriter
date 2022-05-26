@@ -36,6 +36,7 @@ class VAGFISWriter
     void begin();
 
     uint8_t sendMsg(char * msg);
+void sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte);
     uint8_t sendMsg(const char * msg);
     void sendRadioMsg(char msg[16]);
     //bool sendRadioMsg(String msg);
@@ -50,6 +51,7 @@ class VAGFISWriter
     void initFullScreenFilled();
     //void sendRawMsg(char in_msg[]);
     uint8_t sendRawData(char data[]);
+    uint8_t sendRawData(uint8_t data[]);
     void sendKeepAliveMsg();
     void radioDisplayOff();
     void radioDisplayBlank();

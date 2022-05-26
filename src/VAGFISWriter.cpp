@@ -119,7 +119,6 @@ uint8_t VAGFISWriter::sendMsg(const char * msg) {
   return sendRawData(tx_array);
 }
 
-
 void VAGFISWriter::initScreen(uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1,uint8_t mode) {
 /*
 ---------------------------
@@ -341,6 +340,19 @@ void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char
   sendRawData(tx_array);
 }
 
+
+void VAGFISWriter::sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte) {
+  // build tx_array
+  uint8_t b_array[6];
+  b_array[0] = 0x56; // command to set text-display in FIS
+  b_array[1] = 5; // Length of this message (command and this length not counted
+  b_array[2] = font;
+  b_array[3] = X;
+  b_array[4] = Y;
+  b_array[5] = byte;
+  sendRawData(b_array);
+}
+
 void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,const char * msg) {
   // build tx_array
   tx_array[0] = 0x56; // command to set text-display in FIS
@@ -454,6 +466,52 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 
   if(!waitEnaLow()) {
 	  return false;
+  }
+
+#ifdef ENABLE_IRQ
+  sei();
+#endif
+return true;
+}
+
+uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
+
+#ifdef ENABLE_IRQ
+  cli();
+#endif
+  // Send FIS-command
+  if (__singleENA){
+        startENA();
+        sendByte(data[FIS_MSG_COMMAND]);
+  } else {
+        if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
+        if(!waitEnaHigh(100)) {
+                delay(2);
+                return sendRawData(data);
+          }
+  }
+
+  uint8_t crc =data[FIS_MSG_COMMAND];
+  for (int8_t a=1;a<data[1]+1;a++)
+  {
+  // calculate checksum
+  crc ^= data[a];
+  // Step 2 - wait for response from cluster to set ENA-High
+  sendByte(data[a]);
+  // wait for response from cluster to set ENA LOW
+  if(!waitEnaLow()) return false;
+  // Step 10.2 - wait for response from cluster to set ENA-High
+  if(!waitEnaHigh()) return false;
+  }
+  crc--;
+  sendByte(crc);
+  if (__singleENA) {
+          stopENA();
+          delay(3);
+  }
+
+  if(!waitEnaLow()) {
+          return false;
   }
 
 #ifdef ENABLE_IRQ
