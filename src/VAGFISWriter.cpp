@@ -36,12 +36,13 @@ Unfortunately, in this mode, it is not possible to control the transmitted data.
 /**
    Constructor
 */
-VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin,uint8_t single_pulse_on_enable_line)
+VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin, uint8_t forced = 0)
 {
   _FIS_WRITE_CLK = clkPin;
   _FIS_WRITE_DATA = dataPin;
   _FIS_WRITE_ENA = enaPin;
-  __singleENA = single_pulse_on_enable_line;
+  __forced = forced;
+
 }
 
 /**
@@ -57,6 +58,7 @@ VAGFISWriter::~VAGFISWriter()
 
 */
 void VAGFISWriter::begin() {
+//pinMode(5,OUTPUT);
   stopENA();
   pinMode(_FIS_WRITE_CLK, OUTPUT);
   setClockLow();
@@ -101,7 +103,7 @@ void VAGFISWriter::sendStringFS(int x, int y, uint8_t font, String line) {
   sendRawData(tx_array);
 }
 
-uint8_t VAGFISWriter::sendMsg(char * msg) {
+uint8_t VAGFISWriter::sendMsg(char msg[]) {
   // build tx_array
   tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
   tx_array[1] = 18; // Length of this message (command and this length not counted
@@ -110,16 +112,7 @@ uint8_t VAGFISWriter::sendMsg(char * msg) {
   return sendRawData(tx_array);
 }
 
-uint8_t VAGFISWriter::sendMsg(const char * msg) {
-  // build tx_array
-  tx_array[0] = 0x81; // command to set text-display in FIS, only 0x81 works, none of 0x80,0x82,0x83 works ...
-  tx_array[1] = 18; // Length of this message (command and this length not counted
-  tx_array[2] = 0xF0; // 0x0F = 0xFF ^ 0xF0, same ID as in radio message... id for radio text
-  memcpy(&tx_array[3],msg,16);
-  return sendRawData(tx_array);
-}
-
-void VAGFISWriter::initScreen(uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1,uint8_t mode) {
+void VAGFISWriter::initScreen(uint8_t mode,uint8_t X,uint8_t Y,uint8_t X1,uint8_t Y1) {
 /*
 ---------------------------
 | Initializing the screen |
@@ -176,24 +169,23 @@ To switch from the graphical mode to the standard one, you must send the initial
 
 
 void VAGFISWriter::reset(uint8_t mode){
-	VAGFISWriter::initScreen(0,0,1,1,mode);
-	VAGFISWriter::radioDisplayBlank();
-
+	VAGFISWriter::initScreen(mode,0,0,1,1);
 }
 
 void VAGFISWriter::initMiddleScreen(uint8_t mode){
-	VAGFISWriter::initScreen(0,27,64,48,mode);
+	VAGFISWriter::initScreen(mode,0,27,64,48);
 }
 
 void VAGFISWriter::initFullScreen(uint8_t mode){
-	VAGFISWriter::initScreen(0,0,64,88,mode);
+	VAGFISWriter::initScreen(mode,0,0,64,88);
 }
 
 void VAGFISWriter::initFullScreenFilled(){
-        VAGFISWriter::initScreen(0,0,64,88,0x83);
+        VAGFISWriter::initScreen(0x83,0,0,64,88);
 }
 
 
+void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char msg[]) {
 /*
 ----------------
 | Display text |
@@ -329,35 +321,10 @@ x is empty
 y is empty
 z is empty
 */
-void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char * msg) {
   // build tx_array
   tx_array[0] = 0x56; // command to set text-display in FIS
   tx_array[1] = size+4; // Length of this message (command and this length not counted
   tx_array[2] = font; 
-  tx_array[3] = X;
-  tx_array[4] = Y;
-  memcpy(&tx_array[5],msg,size);
-  sendRawData(tx_array);
-}
-
-
-void VAGFISWriter::sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte) {
-  // build tx_array
-  uint8_t b_array[6];
-  b_array[0] = 0x56; // command to set text-display in FIS
-  b_array[1] = 5; // Length of this message (command and this length not counted
-  b_array[2] = font;
-  b_array[3] = X;
-  b_array[4] = Y;
-  b_array[5] = byte;
-  sendRawData(b_array);
-}
-
-void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,const char * msg) {
-  // build tx_array
-  tx_array[0] = 0x56; // command to set text-display in FIS
-  tx_array[1] = size+4; // Length of this message (command and this length not counted
-  tx_array[2] = font;
   tx_array[3] = X;
   tx_array[4] = Y;
   memcpy(&tx_array[5],msg,size);
@@ -398,7 +365,7 @@ xx ----> checksum
 
 */
 
-void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,char data[],uint8_t mode){
+void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,uint8_t data[],uint8_t mode){
 tx_array[0] = 0x55;
 tx_array[1] = size+4;
 tx_array[2] = mode;
@@ -418,7 +385,7 @@ memcpy(&tx_array[5],data,size);
 sendRawData(tx_array);
 }
 
-void VAGFISWriter::GraphicOut(uint8_t x,uint8_t y,uint16_t size,const uint8_t * const data,uint8_t mode){
+void VAGFISWriter::GraphicOut_P(uint8_t x,uint8_t y,uint16_t size,const uint8_t * const data,uint8_t mode){
 tx_array[0] = 0x55;
 tx_array[1] = size+4;
 tx_array[2] = mode;
@@ -428,25 +395,25 @@ memcpy_P(&tx_array[5],data,size);
 sendRawData(tx_array);
 }
 
+
 uint8_t VAGFISWriter::sendRawData(char data[]){
 
 #ifdef ENABLE_IRQ
   cli();
 #endif
   // Send FIS-command
-  if (__singleENA){
-        startENA();
-        sendByte(data[FIS_MSG_COMMAND]);
-  } else {
-        if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
-  	if(!waitEnaHigh(100)) {
-  		delay(2);
-		return sendRawData(data);
-	  }
+  if(!__forced){
+  if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
+
+  if(!waitEnaHigh(100)) {
+  delay(2);
+  return sendRawData(data);
   }
+  } else 
+     sendByte(data[FIS_MSG_COMMAND]);
   
   uint8_t crc =data[FIS_MSG_COMMAND];
-  for (int8_t a=1;a<data[1]+1;a++)
+  for (uint16_t a=1;a<data[1]+1;a++)
   {
   // calculate checksum
   crc ^= data[a];
@@ -459,67 +426,15 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   }
   crc--;
   sendByte(crc);
-  if (__singleENA) {
-	  stopENA();
-	  delay(3);
-  }
-
-  if(!waitEnaLow()) {
-	  return false;
-  }
-
-#ifdef ENABLE_IRQ
-  sei();
-#endif
-return true;
-}
-
-uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
-
-#ifdef ENABLE_IRQ
-  cli();
-#endif
-  // Send FIS-command
-  if (__singleENA){
-        startENA();
-        sendByte(data[FIS_MSG_COMMAND]);
-  } else {
-        if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
-        if(!waitEnaHigh(100)) {
-                delay(2);
-                return sendRawData(data);
-          }
-  }
-
-  uint8_t crc =data[FIS_MSG_COMMAND];
-  for (int8_t a=1;a<data[1]+1;a++)
-  {
-  // calculate checksum
-  crc ^= data[a];
-  // Step 2 - wait for response from cluster to set ENA-High
-  sendByte(data[a]);
-  // wait for response from cluster to set ENA LOW
+  if (__forced)delay(3);
+  
   if(!waitEnaLow()) return false;
-  // Step 10.2 - wait for response from cluster to set ENA-High
-  if(!waitEnaHigh()) return false;
-  }
-  crc--;
-  sendByte(crc);
-  if (__singleENA) {
-          stopENA();
-          delay(3);
-  }
-
-  if(!waitEnaLow()) {
-          return false;
-  }
 
 #ifdef ENABLE_IRQ
   sei();
 #endif
 return true;
 }
-
 /**
  * GraphicFromArray(x,y,sizex,sizey,data,mode)
  *
@@ -541,7 +456,7 @@ if (sizex == 64) // send jumbo packets
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
                 GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
         }
-        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to be sent
+        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
                 uint8_t line = 4*(sizey/4);
                 GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
         }
@@ -555,29 +470,30 @@ else
 }
 }
 
-void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey,const uint8_t * const data,uint8_t mode)
+void VAGFISWriter::GraphicFromArray_P(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, const uint8_t * const data,uint8_t mode)
 {
 // 22x32bytes = 704 
 if (sizex == 64) // send jumbo packets
 {
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
-                GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
+                GraphicOut_P(x,line*4+y,JUMBO_PACKET_SIZE,data+(line*JUMBO_PACKET_SIZE),mode);//4=32/8
         }
-        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to be sent
+        if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
                 uint8_t line = 4*(sizey/4);
-                GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
+                GraphicOut_P(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,data+(line*8),mode);//4=32/8
         }
 }
 else
 {//stick to safe 1packet per line
-        uint8_t packet_size = (sizex+7)/8; // how much byte per packet
+uint8_t packet_size = (sizex+7)/8; // how much byte per packet
         for (uint8_t line = 0;line<sizey;line++){
-                GraphicOut(x,line+y,packet_size,data+(line*packet_size),mode);
+                GraphicOut_P(x,line+y,packet_size,data+(line*packet_size),mode);
         }
 }
 }
 
-void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, char data[],uint8_t mode)
+
+void VAGFISWriter::GraphicFromArray(uint8_t x,uint8_t y, uint8_t sizex, uint8_t sizey, uint8_t data[],uint8_t mode)
 {
 // 22x32bytes = 704 
 if (sizex == 64) // send jumbo packets
@@ -585,7 +501,7 @@ if (sizex == 64) // send jumbo packets
         for (uint8_t line = 0;line<sizey/4;line++){ //32/8=4
                 GraphicOut(x,line*4+y,JUMBO_PACKET_SIZE,&data[line*JUMBO_PACKET_SIZE],mode);//4=32/8
         }
-	if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to be sent
+	if ((sizey*8)%JUMBO_PACKET_SIZE>0){//few bytes left to by send
 		uint8_t line = 4*(sizey/4);
                 GraphicOut(x,line+y,JUMBO_PACKET_SIZE-(sizey*8)%JUMBO_PACKET_SIZE,&data[line*8],mode);//4=32/8
         }
@@ -647,6 +563,7 @@ return true;
 
 */
 void VAGFISWriter::sendByte(uint8_t in_byte) {
+  if (__forced)startENA();
 	uint8_t tx_byte = 0xff - in_byte;
 	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
 
@@ -662,7 +579,11 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 		setClockHigh();
 		delayMicroseconds(FIS_WRITE_PULSEW);
 	}
-	if (__singleENA) delayMicroseconds(80);
+if (__forced){
+  stopENA();
+  delayMicroseconds(80);
+}
+
 }
 
 /**
@@ -671,7 +592,7 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 
 */
 void VAGFISWriter::startENA() {
-  if (!__singleENA) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+  if (!__forced) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
   digitalWrite(_FIS_WRITE_ENA, HIGH);// avoid spikes
   pinMode(_FIS_WRITE_ENA, OUTPUT);
   digitalWrite(_FIS_WRITE_ENA, HIGH);
@@ -681,13 +602,20 @@ void VAGFISWriter::startENA() {
    Set 3LB ENA as input (so low, as we should have pulldown on ena line)
 
 */
-void VAGFISWriter::stopENA() {
-    if (!__singleENA) detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
+uint8_t VAGFISWriter::stopENA() {
+  if (!__forced)
+  {
+    detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
     //digitalWrite(_FIS_WRITE_ENA, LOW);
     pinMode(_FIS_WRITE_ENA, INPUT);
     //digitalWrite(_FIS_WRITE_ENA, LOW);
-//    if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
-    //delayMicroseconds(100);
+    attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+  }
+  else
+  {
+    digitalWrite(_FIS_WRITE_ENA, LOW);
+    delayMicroseconds(100);
+  }
 }
 
 /**
@@ -726,7 +654,7 @@ digitalWrite(_FIS_WRITE_DATA,LOW);
 */
 uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
   uint8_t crc = in_msg[0];
-  for (int16_t i = 1; i < 18; i++) //used only in sendString(String line1, String line2, bool center) and that is fixed size array of 18bytes
+  for (int16_t i = 1; i < sizeof(in_msg); i++)
   {
     crc ^= in_msg[i];
   }
@@ -736,22 +664,20 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
 
 uint8_t VAGFISWriter::waitEnaHigh(uint16_t timeout_us)
 {
-	if (!__singleENA)
-	while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-		delayMicroseconds(1);
-		timeout_us -= 1;
-	}
-  if (timeout_us == 0) return false;
+  /*while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+    delayMicroseconds(1);
+    timeout_us -= 1;
+  }
+  if (timeout_us == 0) return false;*/
 return true;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
-	if (!__singleENA)
-	while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-		delayMicroseconds(1);
-		timeout_us -= 1;
-	}
-  if (timeout_us == 0) return false;
+  /*while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
+    delayMicroseconds(1);
+    timeout_us -= 1;
+  }
+  if (timeout_us == 0) return false;*/
 return true;
 }
 /*
@@ -774,13 +700,13 @@ stopENA();
 return true;
 }*/
 
-void VAGFISWriter::sendRadioMsg(char * msg)
+bool VAGFISWriter::sendRadioMsg(char * msg)
 {
 	_radioDataOK=0;
 	memcpy(&_radioData,msg,16);
 
 	_radioDataOK=1;
-	VAGFISWriter::sendRadioData();//force 1st packet
+	VAGFISWriter::sendRadioData(1);//force 1st packet
 }
 
 
@@ -793,30 +719,20 @@ if(digitalRead(_FIS_WRITE_ENA)){
 
 void VAGFISWriter::enableGoesLow(void)
 {
-//	if(!digitalRead(_FIS_WRITE_ENA)){ //we should check for LOW state
-//		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);//no need for if (__singleENA) here, interupts are not initialized if this flag is used
-//	}
-	_radioDataOK=1;
+	if(digitalRead(_FIS_WRITE_ENA)){
+		_sendOutData=1;//cluster acknowleage previously received packet
+		attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	}
 }
 
-/*
- * if __singleENA is set, interrupts are disabled, so we should run this periodicaly from main loop or from timer ISR
- * using __sinleENA means we have something broken and cluster did to ack packets on ENA line
- * we have no way to know that we can send another data 
- *
- */
-void VAGFISWriter::sendRadioData()
+void VAGFISWriter::sendRadioData(uint8_t forced)
 {
-	if (!__singleENA) {
-	//	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA)); //disabled in startENA
-		delay(100); //in future we will use timer for this ...
-		Serial.println(_radioDataOK);
-	} else {
-		_radioDataOK=1;
-	}
+	if (forced or __forced) _sendOutData=1;
+	else delay(100); //in future we will use timer for this ...
   
-	if (_radioDataOK)
+	if (_radioDataOK && _sendOutData)
 	{
+	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA));
 	startENA();
 	uint8_t crc=0xF0;
 	sendByte(0xF0); 
@@ -828,7 +744,7 @@ void VAGFISWriter::sendRadioData()
 	}
 	sendByte(0xFF ^ crc);
 	stopENA();
-	_radioDataOK=0;
-	if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
+	_sendOutData=0;
+	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
 	}
 }
