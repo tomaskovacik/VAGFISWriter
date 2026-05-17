@@ -89,7 +89,7 @@ void VAGFISWriter::sendString(String line1, String line2, bool center) {
 
 }
 
-//for compatibility with FICuntrol
+//for compatibility with FISCuntrol
 void VAGFISWriter::sendStringFS(int x, int y, uint8_t font, String line) {
   line.toUpperCase();
   tx_array[0] = 0x56; // command to set text-display in FIS
@@ -171,7 +171,10 @@ To switch from the graphical mode to the standard one, you must send the initial
   tx_array[5] = X1;
   tx_array[6] = Y1;
   sendRawData(tx_array);
-  if (X==0 && Y==0 && X1==1 && Y1==1) delay(25); //18ms pulse from cluster, probably ack that screen is out of graphix mode..
+  if (X==0 && Y==0 && X1==1 && Y1==1) {
+        end_time = millis()+25;
+        while (millis() < end_time);//18ms pulse from cluster, probably ack that screen is out of graphix mode..
+  }
 }
 
 
@@ -341,7 +344,7 @@ void VAGFISWriter::sendMsgFS(uint8_t X,uint8_t Y,uint8_t font, uint8_t size,char
 }
 
 
-void VAGFISWriter::sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte) {
+void VAGFISWriter::sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t _byte) {
   // build tx_array
   uint8_t b_array[6];
   b_array[0] = 0x56; // command to set text-display in FIS
@@ -349,7 +352,7 @@ void VAGFISWriter::sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte) {
   b_array[2] = font;
   b_array[3] = X;
   b_array[4] = Y;
-  b_array[5] = byte;
+  b_array[5] = _byte;
   sendRawData(b_array);
 }
 
@@ -440,33 +443,35 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   } else {
         if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
   	if(!waitEnaHigh(100)) {
-  		delay(2);
+                end_time = millis()+2;
+	        while (millis() < end_time);
 		return sendRawData(data);
 	  }
   }
   
-  uint8_t crc =data[FIS_MSG_COMMAND];
+  uint8_t crc = data[FIS_MSG_COMMAND];
   for (int8_t a=1;a<data[1]+1;a++)
   {
   // calculate checksum
   crc ^= data[a];
   // Step 2 - wait for response from cluster to set ENA-High
   sendByte(data[a]);
-  // wait for response from cluster to set ENA LOW
-  if(!waitEnaLow()) return false;
-  // Step 10.2 - wait for response from cluster to set ENA-High
-  if(!waitEnaHigh()) return false;
+  if (!__singleENA) {
+	// wait for response from cluster to set ENA LOW
+	if(!waitEnaLow()) return false;
+	// Step 10.2 - wait for response from cluster to set ENA-High
+  	if(!waitEnaHigh()) return false;
+  }
   }
   crc--;
   sendByte(crc);
   if (__singleENA) {
-	  stopENA();
-	  delay(3);
+	stopENA();
+	end_time = millis()+3;
+	while (millis() < end_time);
   }
 
-  if(!waitEnaLow()) {
-	  return false;
-  }
+  if(!waitEnaLow()) return false;
 
 #ifdef ENABLE_IRQ
   sei();
@@ -486,7 +491,8 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   } else {
         if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
         if(!waitEnaHigh(100)) {
-                delay(2);
+                end_time = millis()+2;
+		while (millis() < end_time);
                 return sendRawData(data);
           }
   }
@@ -498,21 +504,22 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   crc ^= data[a];
   // Step 2 - wait for response from cluster to set ENA-High
   sendByte(data[a]);
-  // wait for response from cluster to set ENA LOW
-  if(!waitEnaLow()) return false;
-  // Step 10.2 - wait for response from cluster to set ENA-High
-  if(!waitEnaHigh()) return false;
+  if (!__singleENA){
+	// wait for response from cluster to set ENA LOW
+	if(!waitEnaLow()) return false;
+	// Step 10.2 - wait for response from cluster to set ENA-High
+	if(!waitEnaHigh()) return false;
+  }
   }
   crc--;
   sendByte(crc);
   if (__singleENA) {
-          stopENA();
-          delay(3);
-  }
-
-  if(!waitEnaLow()) {
-          return false;
-  }
+	  stopENA();
+	  end_time = millis()+3;
+	  while (millis() < end_time);
+  } else
+	  if(!waitEnaLow())
+		  return false;
 
 #ifdef ENABLE_IRQ
   sei();
@@ -605,9 +612,11 @@ uint8_t packet_size = (sizex+7)/8; // how much byte per packet
 
 */
 void VAGFISWriter::sendKeepAliveMsg() {
-  delay(100);
+  end_time = millis()+100;
+  while (millis() < end_time);
   sendSingleByteCommand(0xC3);
-  delay(100);
+  end_time = millis()+100;
+  while (millis() < end_time);
 }
 
 void VAGFISWriter::radioDisplayOff() {
@@ -656,13 +665,20 @@ void VAGFISWriter::sendByte(uint8_t in_byte) {
 			case 0: setDataLow();
 				break;
 		}
-		delayMicroseconds(9);
+		end_time = micros()+9;
+		while (micros() < end_time);
 		setClockLow();
-		delayMicroseconds(FIS_WRITE_PULSEW);
+		end_time = micros()+FIS_WRITE_PULSEW;
+		while (micros() < end_time);
 		setClockHigh();
-		delayMicroseconds(FIS_WRITE_PULSEW);
+		end_time = micros()+FIS_WRITE_PULSEW;
+		while (micros() < end_time);
 	}
-	if (__singleENA) delayMicroseconds(80);
+	if (__singleENA){
+		//delayMicroseconds(80);
+		end_time = micros()+80;
+		while (micros() < end_time);
+	}
 }
 
 /**
@@ -726,7 +742,7 @@ digitalWrite(_FIS_WRITE_DATA,LOW);
 */
 uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
   uint8_t crc = in_msg[0];
-  for (int16_t i = 1; i < 18; i++) //used only in sendString(String line1, String line2, bool center) and that is fixed size array of 18bytes
+  for (int16_t i = 1; i < in_msg[1]; i++) //used only in sendString(String line1, String line2, bool center) and that is fixed size array of 18bytes
   {
     crc ^= in_msg[i];
   }
@@ -736,23 +752,19 @@ uint8_t VAGFISWriter::checkSum( volatile uint8_t in_msg[]) {
 
 uint8_t VAGFISWriter::waitEnaHigh(uint16_t timeout_us)
 {
-	if (!__singleENA)
-	while (!digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-		delayMicroseconds(1);
-		timeout_us -= 1;
-	}
-  if (timeout_us == 0) return false;
-return true;
+	end_time = micros()+timeout_us;
+	if (__singleENA) return true; //probably never used,must test it iwth scope
+       	while (micros() < end_time)
+		if (digitalRead(_FIS_WRITE_ENA)) return true;
+  return false;
 }
 
 uint8_t VAGFISWriter::waitEnaLow(uint16_t timeout_us){
-	if (!__singleENA)
-	while (digitalRead(_FIS_WRITE_ENA) && timeout_us > 0) {
-		delayMicroseconds(1);
-		timeout_us -= 1;
-	}
-  if (timeout_us == 0) return false;
-return true;
+	end_time = micros()+timeout_us;
+	if (__singleENA) return true;
+       	while (micros() < end_time)
+		if (!digitalRead(_FIS_WRITE_ENA)) return true;
+	return false;
 }
 /*
 bool VAGFISWriter::sendRadioMsg(char msg[16]){
@@ -777,7 +789,7 @@ return true;
 void VAGFISWriter::sendRadioMsg(char * msg)
 {
 	_radioDataOK=0;
-	memcpy(&_radioData,msg,16);
+	memcpy(_radioData,msg,16);
 
 	_radioDataOK=1;
 	VAGFISWriter::sendRadioData();//force 1st packet
@@ -786,9 +798,9 @@ void VAGFISWriter::sendRadioMsg(char * msg)
 
 void VAGFISWriter::enableGoesHigh(void)
 {
-if(digitalRead(_FIS_WRITE_ENA)){
+//if(digitalRead(_FIS_WRITE_ENA)){
 	attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesLow,FALLING);
-}
+//}
 }
 
 void VAGFISWriter::enableGoesLow(void)
@@ -801,16 +813,16 @@ void VAGFISWriter::enableGoesLow(void)
 
 /*
  * if __singleENA is set, interrupts are disabled, so we should run this periodicaly from main loop or from timer ISR
- * using __sinleENA means we have something broken and cluster did to ack packets on ENA line
+ * using __singleENA means we have something broken and cluster did to ack packets on ENA line
  * we have no way to know that we can send another data 
  *
  */
 void VAGFISWriter::sendRadioData()
 {
 	if (!__singleENA) {
-	//	detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA)); //disabled in startENA
-		delay(100); //in future we will use timer for this ...
-		Serial.println(_radioDataOK);
+		//detachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA)); //disabled in startENA
+		end_time = millis()+100; //replacement for delay(100); - in future we will use timer for this ...
+		while (millis() < end_time);
 	} else {
 		_radioDataOK=1;
 	}

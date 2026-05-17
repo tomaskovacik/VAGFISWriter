@@ -25,7 +25,7 @@
     static uint8_t _FIS_WRITE_ENA;
     static uint8_t _FIS_WRITE_CLK;
     static uint8_t _FIS_WRITE_DATA;
-    static char _radioData[16];
+    static char    _radioData[16];
     static uint8_t _radioDataOK=0;
 
 class VAGFISWriter
@@ -36,7 +36,7 @@ class VAGFISWriter
     void begin();
 
     uint8_t sendMsg(char * msg);
-void sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte);
+    void sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte);
     uint8_t sendMsg(const char * msg);
     void sendRadioMsg(char msg[16]);
     //bool sendRadioMsg(String msg);
@@ -66,9 +66,8 @@ void sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte);
     static void enableGoesHigh(void);
     static void enableGoesLow(void);
     private:
-
+    uint32_t end_time;
     uint8_t sendSingleByteCommand(uint8_t txByte);
-    void sendEnablePulse();
     void sendByte(uint8_t in_byte);
     void startENA();
     void stopENA();
