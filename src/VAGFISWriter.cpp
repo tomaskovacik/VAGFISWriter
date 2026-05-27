@@ -58,10 +58,8 @@ VAGFISWriter::~VAGFISWriter()
 */
 void VAGFISWriter::begin() {
   stopENA();
-  pinMode(_FIS_WRITE_CLK, OUTPUT);
-  setClockLow();
-  pinMode(_FIS_WRITE_DATA, OUTPUT);
-  setDataLow();
+  SPI.begin();
+  SPI.beginTransaction(FIS_SPI_SETTINGS);
 };
 
 
@@ -652,33 +650,16 @@ return true;
 
 /**
 
-   Send byte out on 3LB port to instrument cluster
+   Send byte out via SPI to instrument cluster.
+   Byte is inverted (0xFF ^ in_byte) for negative logic on DATA/CLK lines.
 
 */
 void VAGFISWriter::sendByte(uint8_t in_byte) {
-	uint8_t tx_byte = 0xff - in_byte;
-	for (int8_t i = 7; i >= 0; i--) {//must be signed! need -1 to stop "for"iing
-
-		switch ((tx_byte & (1 << i)) > 0 ) {
-			case 1: setDataHigh();
-				break;
-			case 0: setDataLow();
-				break;
-		}
-		end_time = micros()+9;
-		while (micros() < end_time);
-		setClockLow();
-		end_time = micros()+FIS_WRITE_PULSEW;
-		while (micros() < end_time);
-		setClockHigh();
-		end_time = micros()+FIS_WRITE_PULSEW;
-		while (micros() < end_time);
-	}
-	if (__singleENA){
-		//delayMicroseconds(80);
-		end_time = micros()+80;
-		while (micros() < end_time);
-	}
+  SPI.transfer(0xFF ^ in_byte);
+  if (__singleENA) {
+    end_time = micros() + 80;
+    while (micros() < end_time);
+  }
 }
 
 /**
@@ -704,33 +685,6 @@ void VAGFISWriter::stopENA() {
     //digitalWrite(_FIS_WRITE_ENA, LOW);
 //    if (!__singleENA) attachInterrupt(digitalPinToInterrupt(_FIS_WRITE_ENA),&VAGFISWriter::enableGoesHigh,RISING);
     //delayMicroseconds(100);
-}
-
-/**
-
-   Set 3LB CLK High
-
-*/
-void VAGFISWriter::setClockHigh() {
-  digitalWrite(_FIS_WRITE_CLK,HIGH);
-}
-/**
-   Set 3LB CLK Low
-*/
-void VAGFISWriter::setClockLow() {
-digitalWrite(_FIS_WRITE_CLK,LOW);
-}
-/**
-   Set 3LB DATA High
-*/
-void VAGFISWriter::setDataHigh() {
-digitalWrite(_FIS_WRITE_DATA,HIGH);
-}
-/**
-   Set 3LB DATA Low
-*/
-void VAGFISWriter::setDataLow() {
-digitalWrite(_FIS_WRITE_DATA,LOW);
 }
 
 /**

@@ -6,14 +6,19 @@
 
 #include <inttypes.h>
 #include <Arduino.h>
+#include <SPI.h>
 
 // based on FIS_emulator
 
-#define FIS_WRITE_PULSEW 4
-
+// Hardware SPI pins must be used: DATA=MOSI (Arduino Uno pin 11), CLK=SCK (Arduino Uno pin 13)
 #define PORT_3LB PORTB
 #define DATA  PB3 //MOSI (Arduino Uno 11)
 #define CLK   PB5 //SCK (Arduino 13)
+
+// FIS bus: clock idles HIGH, data sampled on falling edge => SPI Mode 2 (CPOL=1, CPHA=0)
+// Bytes are inverted (0xFF ^ byte) due to negative logic on DATA/CLK lines
+#define FIS_SPI_SPEED   125000UL
+#define FIS_SPI_SETTINGS SPISettings(FIS_SPI_SPEED, MSBFIRST, SPI_MODE2)
 
 
 // Positions in Message-Array
@@ -71,10 +76,6 @@ class VAGFISWriter
     void sendByte(uint8_t in_byte);
     void startENA();
     void stopENA();
-    void setClockHigh();
-    void setClockLow();
-    void setDataHigh();
-    void setDataLow();
     uint8_t waitEnaHigh( uint16_t timeout_us = 1500);
     uint8_t waitEnaLow( uint16_t timeout_us = 1500);
     uint8_t checkSum( volatile uint8_t in_msg[]);
