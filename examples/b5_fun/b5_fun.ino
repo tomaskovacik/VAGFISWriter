@@ -10,7 +10,7 @@
 //avr (Arduino Uno/Nano)
 #define FIS_CLK 13   // SPI SCK (hardware SPI required)
 #define FIS_DATA 11  // SPI MOSI (hardware SPI required)
-#define FIS_ENA 5    // Any digital pin with interrupt capability
+#define FIS_ENA 2    // Any digital pin with interrupt capability
 
 //CLK,DATA,ENA pin, forcemode=0/1
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA, 0);
