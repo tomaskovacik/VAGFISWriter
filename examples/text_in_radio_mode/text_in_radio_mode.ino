@@ -1,12 +1,16 @@
 #include "VAGFISWriter.h"
 
 /*
- * if this pin did not have HW interrupt, force mode must by set in initialization of VAGFISWRITER (4th parameter = 1)
- * if no real radio/cluster is used, PULL_DOWN must be applied on ENABLE line!
+ * Hardware SPI pins must be used for CLK and DATA:
+ * - Arduino Uno/Nano: CLK=pin 13 (SCK), DATA=pin 11 (MOSI)
+ * - ENA can be any digital pin with interrupt capability
+ * 
+ * If ENA pin does not have HW interrupt, force mode must be set in initialization (4th parameter = 1)
+ * If no real radio/cluster is used, PULL_DOWN must be applied on ENABLE line!
  */
-#define FIS_ENA 2
-#define FIS_CLK 6
-#define FIS_DATA 7
+#define FIS_CLK 13   // SPI SCK (hardware SPI required)
+#define FIS_DATA 11  // SPI MOSI (hardware SPI required)
+#define FIS_ENA 2    // Digital pin with interrupt capability
 
 //HW interrupt on FIS_ENA pin
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA,0);

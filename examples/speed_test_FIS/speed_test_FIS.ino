@@ -3,16 +3,16 @@
 
 #define MinRefresh 100
 
-// FIS
+// FIS - Hardware SPI pins must be used
 //stm32
-//#define FIS_CLK PB3
-//#define FIS_DATA PB5
+//#define FIS_CLK PB3  // SPI SCK
+//#define FIS_DATA PB5 // SPI MOSI
 //#define FIS_ENA PA15
 
-//avr
-#define FIS_ENA 5
-#define FIS_CLK 6
-#define FIS_DATA 7
+//avr (Arduino Uno/Nano)
+#define FIS_CLK 13   // SPI SCK (hardware SPI required)
+#define FIS_DATA 11  // SPI MOSI (hardware SPI required)
+#define FIS_ENA 5    // Any digital pin with interrupt capability
 
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA );
 
