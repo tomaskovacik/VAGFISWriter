@@ -42,6 +42,44 @@ VAGFISWriter::VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin,uint8
   _FIS_WRITE_DATA = dataPin;
   _FIS_WRITE_ENA = enaPin;
   __singleENA = single_pulse_on_enable_line;
+  
+  // Determine SPI mode with validation
+#if defined(VAGFISWRITER_FORCE_HARDWARE_SPI)
+  // User wants hardware SPI - validate pins match hardware SPI
+  #if defined(SCK) && defined(MOSI)
+    if (clkPin == SCK && dataPin == MOSI) {
+      _useHardwareSPI = true;  // Pins match - safe to use hardware SPI
+    } else {
+      _useHardwareSPI = false; // SAFETY: Pins don't match, fall back to software SPI
+      #warning "VAGFISWRITER_FORCE_HARDWARE_SPI specified but pins don't match hardware SPI pins. Falling back to software SPI for safety."
+    }
+  #elif defined(PIN_SPI_SCK) && defined(PIN_SPI_MOSI)
+    if (clkPin == PIN_SPI_SCK && dataPin == PIN_SPI_MOSI) {
+      _useHardwareSPI = true;  // Pins match - safe to use hardware SPI
+    } else {
+      _useHardwareSPI = false; // SAFETY: Pins don't match, fall back to software SPI
+      #warning "VAGFISWRITER_FORCE_HARDWARE_SPI specified but pins don't match hardware SPI pins. Falling back to software SPI for safety."
+    }
+  #else
+    // Platform doesn't define SPI pins, trust user's force
+    _useHardwareSPI = true;  
+  #endif
+  
+#elif defined(VAGFISWRITER_FORCE_SOFTWARE_SPI)
+  _useHardwareSPI = false; // User explicitly wants software SPI
+  
+#else
+  // Auto-detect if hardware SPI pins are used (default SPI pins only)
+  // This checks against the board's default SPI pins (SCK/MOSI)
+  // For non-default SPI pins or alternate SPI peripherals, software mode will be used
+  #if defined(SCK) && defined(MOSI)
+    _useHardwareSPI = (clkPin == SCK && dataPin == MOSI);
+  #elif defined(PIN_SPI_SCK) && defined(PIN_SPI_MOSI)
+    _useHardwareSPI = (clkPin == PIN_SPI_SCK && dataPin == PIN_SPI_MOSI);
+  #else
+    _useHardwareSPI = false; // Unknown platform, use software SPI
+  #endif
+#endif
 }
 
 /**
@@ -58,8 +96,18 @@ VAGFISWriter::~VAGFISWriter()
 */
 void VAGFISWriter::begin() {
   stopENA();
-  SPI.begin();
-  SPI.beginTransaction(FIS_SPI_SETTINGS);
+  
+  if (_useHardwareSPI) {
+    // Use hardware SPI
+    SPI.begin();
+    SPI.beginTransaction(FIS_SPI_SETTINGS);
+  } else {
+    // Use software SPI - set pins HIGH before pinMode to avoid glitches
+    digitalWrite(_FIS_WRITE_CLK, HIGH);  // Clock idles HIGH (MODE2)
+    digitalWrite(_FIS_WRITE_DATA, HIGH); // Data idles HIGH
+    pinMode(_FIS_WRITE_CLK, OUTPUT);
+    pinMode(_FIS_WRITE_DATA, OUTPUT);
+  }
 };
 
 
@@ -440,8 +488,8 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
         sendByte(data[FIS_MSG_COMMAND]);
   } else {
         if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
-  	if(!waitEnaHigh(100)) {
-                end_time = millis()+2;
+  	if(!waitEnaHigh()) {
+                end_time = millis()+5;
 	        while (millis() < end_time);
 		return sendRawData(data);
 	  }
@@ -467,9 +515,17 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 	stopENA();
 	end_time = millis()+3;
 	while (millis() < end_time);
-  }
-
-  if(!waitEnaLow()) return false;
+  } else 
+	if(!waitEnaLow())
+		return false;
+  //check if we do not get any error pulse from cluster
+  if(waitEnaHigh(4000)){
+                  //we get high pulse on enable like, wait till it ends, then return false
+                  waitEnaLow(20000); //it is like 18ms ....
+		  end_time = millis() + 10;
+    		  while (millis() < end_time);
+                  return sendRawData(data);//return false;
+                  }
 
 #ifdef ENABLE_IRQ
   sei();
@@ -489,7 +545,7 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   } else {
         if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
         if(!waitEnaHigh(100)) {
-                end_time = millis()+2;
+                end_time = millis()+5;
 		while (millis() < end_time);
                 return sendRawData(data);
           }
@@ -518,6 +574,14 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   } else
 	  if(!waitEnaLow())
 		  return false;
+  //check if we do not get any error pulse from cluster
+  if(waitEnaHigh(4000)){
+		  //we get high pulse on enable like, wait till it ends, then return false
+		  waitEnaLow(20000); //it is like 18ms ....
+		  end_time = millis() + 10;
+    		  while (millis() < end_time);
+		  return sendRawData(data);//return false;
+		  }
 
 #ifdef ENABLE_IRQ
   sei();
@@ -652,14 +716,58 @@ return true;
 
    Send byte out via SPI to instrument cluster.
    Byte is inverted (0xFF ^ in_byte) for negative logic on DATA/CLK lines.
+   Uses hardware or software SPI depending on pin configuration.
 
 */
 void VAGFISWriter::sendByte(uint8_t in_byte) {
-  SPI.transfer(0xFF ^ in_byte);
+  if (_useHardwareSPI) {
+    SPI.transfer(0xFF ^ in_byte);
+  } else {
+    sendByteSoftware(0xFF ^ in_byte);
+  }
   if (__singleENA) {
     end_time = micros() + 80;
     while (micros() < end_time);
   }
+}
+
+/**
+   Software SPI implementation for MODE2 (CPOL=1, CPHA=0)
+   
+   MODE2 characteristics:
+   - Clock idles HIGH
+   - Data is sampled on falling edge (leading edge)
+   - Data is changed on rising edge (trailing edge)
+   
+   Note: Software SPI is slower than hardware SPI and may not reach
+   the full 125kHz speed due to digitalWrite overhead.
+*/
+void VAGFISWriter::sendByteSoftware(uint8_t byte) {
+  // MODE2: CPOL=1 (idle HIGH), CPHA=0 (sample on leading=falling edge)
+  for (uint8_t bit = 0; bit < 8; bit++) {
+    // Set data bit (MSB first)
+    digitalWrite(_FIS_WRITE_DATA, (byte & 0x80) ? HIGH : LOW);
+    byte <<= 1;
+    
+    // Clock pulse: HIGH -> LOW (falling edge, slave samples) -> HIGH
+    digitalWrite(_FIS_WRITE_CLK, LOW);  // Falling edge - slave samples data here
+    delayMicroseconds(4); // ~125kHz = 8us period, 4us per half (best effort)
+    digitalWrite(_FIS_WRITE_CLK, HIGH); // Return to idle HIGH
+    delayMicroseconds(4);
+  }
+  // Ensure data line returns to idle HIGH state
+  digitalWrite(_FIS_WRITE_DATA, HIGH);
+}
+
+/**
+   Check if hardware SPI is being used
+   
+   Returns true if the library detected that the CLK and DATA pins match
+   the board's default hardware SPI pins (SCK/MOSI) and is using hardware SPI.
+   Returns false if software SPI is being used.
+*/
+bool VAGFISWriter::isUsingHardwareSPI() {
+  return _useHardwareSPI;
 }
 
 /**

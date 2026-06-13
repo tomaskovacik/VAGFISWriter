@@ -10,6 +10,16 @@
 
 // based on FIS_emulator
 
+// User override options (define BEFORE including this header):
+// #define VAGFISWRITER_FORCE_HARDWARE_SPI  // Force hardware SPI mode (with pin validation)
+// #define VAGFISWRITER_FORCE_SOFTWARE_SPI  // Force software SPI mode
+// 
+// Note: VAGFISWRITER_FORCE_HARDWARE_SPI includes safety validation:
+//       - If pins DON'T match hardware SPI pins, falls back to software SPI with compile warning
+//       - If pins DO match hardware SPI pins, uses hardware SPI
+//       - Use this for STM32/ESP32 where auto-detection might fail
+// If neither is defined, automatic detection will be used
+
 // Hardware SPI pins must be used: DATA=MOSI (Arduino Uno pin 11), CLK=SCK (Arduino Uno pin 13)
 #define PORT_3LB PORTB
 #define DATA  PB3 //MOSI (Arduino Uno 11)
@@ -39,6 +49,7 @@ class VAGFISWriter
     VAGFISWriter(uint8_t clkPin, uint8_t dataPin, uint8_t enaPin,uint8_t single_pulse_on_enable_line=0);
     ~VAGFISWriter();
     void begin();
+    bool isUsingHardwareSPI();
 
     uint8_t sendMsg(char * msg);
     void sendOneByte(uint8_t X,uint8_t Y,uint8_t font, uint8_t byte);
@@ -74,12 +85,14 @@ class VAGFISWriter
     uint32_t end_time;
     uint8_t sendSingleByteCommand(uint8_t txByte);
     void sendByte(uint8_t in_byte);
+    void sendByteSoftware(uint8_t byte);
     void startENA();
     void stopENA();
     uint8_t waitEnaHigh( uint16_t timeout_us = 1500);
     uint8_t waitEnaLow( uint16_t timeout_us = 1500);
     uint8_t checkSum( volatile uint8_t in_msg[]);
     uint8_t __singleENA=0;
+    bool _useHardwareSPI=false;
 };
 
 
