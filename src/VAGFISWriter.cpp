@@ -199,58 +199,39 @@ CN ----> Number of bytes
 
 CM ----> initialization command (mode byte):
 
-  Empirically surveyed with init_mode_survey sketch (solid 0xFF stripes, reset()
-  between each test so the cluster always starts from its own normal display mode):
+  Working hypothesis (needs further verification):
 
-  --- Modes 0x00-0x07: SUB-REGION OPERATIONS (not display-mode initializers) ---
+  --- STEP 1: enter graphics mode (0x80 or 0x8x) ---
 
-  These modes do NOT enter graphics display mode from a normal (non-graphics) state.
-  The cluster accepts the initScreen packet and subsequent GraphicOut data silently,
-  but nothing is rendered. They are only meaningful while already in graphics mode,
-  where they perform rectangle operations on the current framebuffer:
+  0x80 - BASE INIT. Enters graphics mode as an overlay on the cluster's own display.
+         Does NOT clear the screen. Confirmed to write over cluster text rows with no
+         protection. Earlier observations of "rejected rows" were communication errors.
 
-  0x02 - Clear (all pixels OFF) the specified rectangle.
-         Use while in graphics mode to erase a sub-region or cut a hole:
+  0x82 - CLEAR + POSITIVE. Same as 0x80 but also clears the region first (pixels OFF).
+         Positive polarity: bit=1 → pixel ON. Standard recommended mode.
+
+  0x83 - FILL + INVERTED. Same as 0x80 but fills the region first (pixels ON).
+         Inverted polarity: bit=1 → pixel OFF (dark hole in lit background).
+
+  0x81, 0x84-0x87 - Variants; exact differences from 0x80/0x82/0x83 not yet confirmed.
+
+  --- STEP 2: init sub-regions (0x01/0x02/0x03 used after 0x80) ---
+
+  After entering graphics mode with 0x80, use these to define specific rectangles:
+
+  0x01 - Init sub-region (behaviour under investigation — possibly clear + positive
+         like 0x82 but scoped to the given rectangle).
+
+  0x02 - Clear (pixels OFF) the specified rectangle within the active session.
+         Use to erase a sub-region or cut a hole inside a filled area:
            initScreen(14, 26, 37, 50, 0x03); // fill outer rectangle
            initScreen(15, 27, 35, 48, 0x02); // clear inside -> border outline
 
-  0x03 - Fill (all pixels ON) the specified rectangle.
-         Use while in graphics mode to draw a solid block:
+  0x03 - Fill (pixels ON) the specified rectangle within the active session.
+         Use to draw a solid block:
            initScreen(10, 10, 54, 78, 0x03); // solid filled rectangle
 
-  0x00, 0x01, 0x04-0x07 - No observed effect in any test; cluster accepts but
-                           does not render.
-
-  --- Modes 0x80-0x87: GRAPHICS DISPLAY MODE INITIALIZERS ---
-
-  These modes enter graphics display mode (display becomes controllable by master).
-  The cluster continues rendering its own native UI underneath unless explicitly
-  cleared.
-
-  0x80 - PROTECTED OVERLAY. Enters graphics mode on top of the cluster's own display
-         WITHOUT clearing it. The cluster's native UI (text, status indicators) remains
-         visible and its rows are write-protected: GraphicOut packets targeting those
-         rows are silently rejected (function returns false). Drawn pixels appear in the
-         non-protected areas only.
-         Use to add graphics alongside cluster's own text without disturbing it.
-
-  0x81 - FULL OVERLAY. Same as 0x80 (overlays cluster display without clearing) but
-         with NO write protection — GraphicOut can overwrite the cluster's own text
-         and UI elements. Use to completely take over specific rows including text rows.
-
-  0x82 - CLEAR + POSITIVE. Clears the entire region (all pixels OFF = white/unlit),
-         then enters graphics mode. Positive polarity: bit=1 → pixel ON (lit/red).
-         RECOMMENDED: standard mode for all normal graphics output.
-
-  0x83 - FILL + INVERTED. Fills the entire region (all pixels ON = dark/red), then
-         enters graphics mode. Inverted polarity: bit=1 → pixel OFF (dark hole in
-         red background). Use for "negative image" or dark-background effects.
-
-  0x84 - Full overlay, same visual result as 0x81 (no write protection on cluster
-         text rows). Exact relationship to 0x80/0x81 unclear.
-  0x85 - Same as 0x84.
-  0x86 - Same as 0x82 (clear + positive).
-  0x87 - Same as 0x83 (fill + inverted).
+  0x00, 0x04-0x07 - No confirmed effect; cluster accepts packets but nothing renders.
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 

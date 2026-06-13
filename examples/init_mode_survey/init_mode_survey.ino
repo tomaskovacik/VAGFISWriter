@@ -14,30 +14,21 @@
  *   3. draw solid 0xFF horizontal stripes across the whole screen with GraphicOut
  *   4. pause — type what you see + ENTER to advance, 'r' + ENTER to retry
  *
- * Survey results (confirmed, reset() baseline, PROGMEM stripes):
+ * Working hypothesis (needs further verification):
  *
- *   0x00-0x07  NOT display-mode initializers. Sub-region operations only:
- *                0x02 — clear (pixels OFF) a sub-region within an active session
- *                0x03 — fill  (pixels ON)  a sub-region within an active session
- *                others — no observed effect
- *              GraphicOut data is accepted but nothing renders from normal state.
+ *   STEP 1 — enter graphics mode with an 0x8x mode:
+ *     0x80  Base overlay init. Overlays cluster display without clearing.
+ *           Confirmed to write over cluster text rows — no write protection.
+ *           (Earlier "rejected rows" were communication errors, not real protection.)
+ *     0x82  Like 0x80 but clears region first (recommended for clean graphics).
+ *     0x83  Like 0x80 but fills region first (inverted polarity).
+ *     0x81, 0x84-0x87  Variants; exact differences not yet confirmed.
  *
- *   0x80  PROTECTED OVERLAY. Overlays cluster's live display without clearing.
- *         Cluster refuses GraphicOut to its own text/UI rows (no ACK for those).
- *         Only non-protected rows accept data and show stripes.
- *
- *   0x81  FULL OVERLAY. Same as 0x80 (no clear) but NO write-protection.
- *         Overwrites the cluster's own text and UI completely.
- *
- *   0x82  CLEAR + POSITIVE (recommended). Clears screen white, full access.
- *
- *   0x83  FILL + INVERTED. Screen filled dark/red, inverted polarity.
- *         0xFF pixels appear dark on a red/dark background.
- *
- *   0x84  Full overlay, no text protection (like 0x81).
- *   0x85  Same as 0x84.
- *   0x86  Same as 0x82 (clear + positive).
- *   0x87  Same as 0x83 (fill + inverted).
+ *   STEP 2 — optionally init sub-rectangles using 0x0x modes (after 0x80):
+ *     0x01  Init sub-region (exact behaviour under investigation).
+ *     0x02  Clear (pixels OFF) the specified rectangle within the session.
+ *     0x03  Fill  (pixels ON)  the specified rectangle within the session.
+ *     0x00, 0x04-0x07  No confirmed effect.
  *
  * ENA pulse legend (from library):
  *   no pulse    packet accepted silently
