@@ -8,9 +8,9 @@
 //#define FIS_ENA PA15
 
 //avr (Arduino Uno/Nano)
-#define FIS_CLK 13   // SPI SCK (hardware SPI required)
-#define FIS_DATA 11  // SPI MOSI (hardware SPI required)
-#define FIS_ENA 2    // Any digital pin with interrupt capability
+#define FIS_CLK SCK  // SPI SCK (hardware SPI required)
+#define FIS_DATA MOSI  // SPI MOSI (hardware SPI required)
+#define FIS_ENA 49    // Any digital pin with interrupt capability
 
 //CLK,DATA,ENA pin, forcemode=0/1
 VAGFISWriter fisWriter( FIS_CLK, FIS_DATA, FIS_ENA, 0);
@@ -62,10 +62,6 @@ void loop() {
   fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 1);
   delay(1000);
   fisWriter.GraphicFromArray(0, 0, 64, 88, b5f, 2);
-  delay(3000);
-  fisWriter.initFullScreen();
-  fisWriter.GraphicFromArray(0, 0, 64, 65, Q, 2);
-  fisWriter.GraphicFromArray(0, 70, 64, 16, QBSW, 2);
   delay(3000);
   fisWriter.reset();
   fisWriter.sendMsg("12345678  TEST  ");

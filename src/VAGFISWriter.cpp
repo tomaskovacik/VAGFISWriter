@@ -32,6 +32,7 @@ Unfortunately, in this mode, it is not possible to control the transmitted data.
 
 // #define ENABLE_IRQ 1
 // #define DEBUG_MEM 1
+ #define DEBUG_ENA 1   // Print ENA pulse timing to Serial for protocol analysis
 
 /**
    Constructor
@@ -95,6 +96,9 @@ VAGFISWriter::~VAGFISWriter()
 
 */
 void VAGFISWriter::begin() {
+#ifdef DEBUG_ENA
+  Serial.begin(115200);
+#endif
   stopENA();
   
   if (_useHardwareSPI) {
@@ -186,10 +190,30 @@ Where:
 
 CN ----> Number of bytes
 
-CM ----> initialization command
-0x80,0x81 - Initializing the screen without cleaning
-0x82 - screen initialization with cleaning, positive screen
-0x83 - screen initialization with cleaning, negative screen
+CM ----> initialization command (mode byte):
+
+  0x80 - Init region without clearing. Draws on top of whatever the cluster itself
+         is already rendering (speedometer, RPM needle, etc.). Use for overlay graphics.
+         NOTE: 0x00 does NOT work - 0x80 is the minimum working value for no-clear mode.
+
+  0x81 - Init region without clearing (variant, behaviour same as 0x80).
+
+  0x82 - Init region with clearing, positive (pixels ON = white/lit).
+         Standard mode for drawing graphics.
+
+  0x83 - Init region with clearing, negative (pixels ON = dark, background lit).
+         Inverted display.
+
+  0x02 - Clear (fill with black/off pixels) the specified region.
+         Useful for erasing a sub-area without reinitialising the whole screen.
+         Example: cut a transparent hole inside a filled rectangle.
+
+  0x03 - Fill the specified region with solid pixels (all ON).
+         Renders as a filled rectangle.
+         Example: draw a border by filling outer rect with 0x03, then clearing
+         inner rect with 0x02:
+           initScreen(14, 26, 37, 50, 0x03); // filled outer rectangle
+           initScreen(15, 27, 35, 48, 0x02); // clear inside (-1px on each side)
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 
@@ -205,7 +229,8 @@ Initialization is possible in parts:
 To initialize only the middle part of the screen: 0x00, 0x1B, 0x40, 0x30 (64x48)
 To initialize the entire screen: 0x00, 0x00, 0x40, 0x58 (64x88) - the height size specifies a multiple of eight
 
-To switch from the graphical mode to the standard one, you must send the initialization message with the coordinates (0,0) (1,1)
+To switch from the graphical mode to the standard one, you must send the initialization message with the coordinates (0,0) (1,1).
+The cluster responds with an ~18ms HIGH pulse on the ENA line as ACK that it left graphics mode.
 
 */
 
@@ -217,17 +242,15 @@ To switch from the graphical mode to the standard one, you must send the initial
   tx_array[5] = X1;
   tx_array[6] = Y1;
   sendRawData(tx_array);
-  if (X==0 && Y==0 && X1==1 && Y1==1) {
-        end_time = millis()+25;
-        while (millis() < end_time);//18ms pulse from cluster, probably ack that screen is out of graphix mode..
-  }
+  // coords (0,0,1,1) = exit graphics mode; cluster responds with ~18ms HIGH pulse on ENA
+  // that pulse is consumed and treated as ACK inside sendRawData above, no extra wait needed
 }
 
 
-void VAGFISWriter::reset(uint8_t mode){
-	VAGFISWriter::initScreen(0,0,1,1,mode);
+void VAGFISWriter::reset(){
+	// mode byte is ignored by cluster when coords are (0,0,1,1) - exit is coord-triggered
+	VAGFISWriter::initScreen(0,0,1,1,0x82);
 	VAGFISWriter::radioDisplayBlank();
-
 }
 
 void VAGFISWriter::initMiddleScreen(uint8_t mode){
@@ -482,6 +505,16 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 #ifdef ENABLE_IRQ
   cli();
 #endif
+#ifdef DEBUG_ENA
+  Serial.print(F("TX["));
+  Serial.print((uint8_t)data[1] + 2);
+  Serial.print(F("]: "));
+  for (uint8_t i = 0; i <= (uint8_t)data[1]; i++) {
+    if ((uint8_t)data[i] < 0x10) Serial.print('0');
+    Serial.print((uint8_t)data[i], HEX);
+    Serial.print(' ');
+  }
+#endif
   // Send FIS-command
   if (__singleENA){
         startENA();
@@ -511,21 +544,39 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   }
   crc--;
   sendByte(crc);
+#ifdef DEBUG_ENA
+  if (crc < 0x10) Serial.print('0');
+  Serial.print(crc, HEX);
+  Serial.println(F(" [CRC]"));
+#endif
   if (__singleENA) {
 	stopENA();
 	end_time = millis()+3;
 	while (millis() < end_time);
-  } else 
+  } else
 	if(!waitEnaLow())
 		return false;
   //check if we do not get any error pulse from cluster
+#ifdef DEBUG_ENA
+  { uint32_t t0 = micros();
+    if (waitEnaHigh(4000)) {
+      uint32_t t1 = micros();
+      waitEnaLow(20000);
+      uint32_t t2 = micros();
+      Serial.print(F("ENA pulse: latency="));
+      Serial.print(t1 - t0);
+      Serial.print(F("us width="));
+      Serial.print(t2 - t1);
+      Serial.println(F("us -> exit ACK, done"));
+      return true;
+    }
+  }
+#else
   if(waitEnaHigh(4000)){
-                  //we get high pulse on enable like, wait till it ends, then return false
-                  waitEnaLow(20000); //it is like 18ms ....
-		  end_time = millis() + 10;
-    		  while (millis() < end_time);
-                  return sendRawData(data);//return false;
-                  }
+    waitEnaLow(20000); // wait out the ~18ms exit-ACK pulse
+    return true;
+  }
+#endif
 
 #ifdef ENABLE_IRQ
   sei();
@@ -537,6 +588,16 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
 
 #ifdef ENABLE_IRQ
   cli();
+#endif
+#ifdef DEBUG_ENA
+  Serial.print(F("TX["));
+  Serial.print(data[1] + 2);
+  Serial.print(F("]: "));
+  for (uint8_t i = 0; i <= data[1]; i++) {
+    if (data[i] < 0x10) Serial.print('0');
+    Serial.print(data[i], HEX);
+    Serial.print(' ');
+  }
 #endif
   // Send FIS-command
   if (__singleENA){
@@ -567,6 +628,11 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   }
   crc--;
   sendByte(crc);
+#ifdef DEBUG_ENA
+  if (crc < 0x10) Serial.print('0');
+  Serial.print(crc, HEX);
+  Serial.println(F(" [CRC]"));
+#endif
   if (__singleENA) {
 	  stopENA();
 	  end_time = millis()+3;
@@ -575,13 +641,30 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
 	  if(!waitEnaLow())
 		  return false;
   //check if we do not get any error pulse from cluster
+#ifdef DEBUG_ENA
+  { uint32_t t0 = micros();
+    if (waitEnaHigh(4000)) {
+      uint32_t t1 = micros();
+      waitEnaLow(20000);
+      uint32_t t2 = micros();
+      Serial.print(F("ENA pulse (uint8): latency="));
+      Serial.print(t1 - t0);
+      Serial.print(F("us width="));
+      Serial.print(t2 - t1);
+      Serial.println(F("us -> retry"));
+      end_time = millis() + 10;
+      while (millis() < end_time);
+      return sendRawData(data);
+    }
+  }
+#else
   if(waitEnaHigh(4000)){
-		  //we get high pulse on enable like, wait till it ends, then return false
-		  waitEnaLow(20000); //it is like 18ms ....
-		  end_time = millis() + 10;
-    		  while (millis() < end_time);
-		  return sendRawData(data);//return false;
-		  }
+    waitEnaLow(20000);
+    end_time = millis() + 10;
+    while (millis() < end_time);
+    return sendRawData(data);
+  }
+#endif
 
 #ifdef ENABLE_IRQ
   sei();
