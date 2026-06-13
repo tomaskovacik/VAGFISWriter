@@ -199,28 +199,60 @@ CN ----> Number of bytes
 
 CM ----> initialization command (mode byte):
 
-  0x80 - Init region without clearing. Draws on top of whatever the cluster itself
-         is already rendering (speedometer, RPM needle, etc.). Use for overlay graphics.
-         NOTE: 0x00 does NOT work - 0x80 is the minimum working value for no-clear mode.
+  Empirically surveyed (full-screen 0,0,64,88 test, 16 modes, init_mode_survey sketch):
 
-  0x81 - Init region without clearing (variant, behaviour same as 0x80).
+  0x00 - NO-OP. Cluster ignores the command and keeps its own display running.
+         Graphics mode is NOT entered. All other modes (0x01-0x07, 0x80-0x87)
+         DO enter graphics mode.
 
-  0x82 - Init region with clearing, positive (pixels ON = white/lit).
-         Standard mode for drawing graphics.
+  0x01 - Enter graphics mode, clear (white) background, positive pixels.
+         Behaves identically to 0x82 in practice.
 
-  0x83 - Init region with clearing, negative (pixels ON = dark, background lit).
-         Inverted display.
+  0x02 - Dual-purpose:
+         a) When used on a sub-region while already in graphics mode:
+            clears (all pixels OFF) the specified rectangle without exiting
+            graphics mode. Use to punch a hole inside a filled rectangle.
+         b) When used to first enter graphics mode (full screen):
+            behaves like 0x82 (clears region, enters graphics mode).
+         Example (in graphics session):
+           initScreen(14, 26, 37, 50, 0x03); // fill outer rectangle
+           initScreen(15, 27, 35, 48, 0x02); // clear inside = border outline
 
-  0x02 - Clear (fill with black/off pixels) the specified region.
-         Useful for erasing a sub-area without reinitialising the whole screen.
-         Example: cut a transparent hole inside a filled rectangle.
+  0x03 - Dual-purpose:
+         a) When used on a sub-region while already in graphics mode:
+            fills (all pixels ON) the specified rectangle — renders as solid block.
+         b) When used to first enter graphics mode (full screen):
+            behaves like 0x83 (dark/filled background, inverted).
 
-  0x03 - Fill the specified region with solid pixels (all ON).
-         Renders as a filled rectangle.
-         Example: draw a border by filling outer rect with 0x03, then clearing
-         inner rect with 0x02:
-           initScreen(14, 26, 37, 50, 0x03); // filled outer rectangle
-           initScreen(15, 27, 35, 48, 0x02); // clear inside (-1px on each side)
+  0x04 - Enter graphics mode, clear background. Alias for 0x82.
+  0x05 - Enter graphics mode, clear background. Alias for 0x82.
+  0x06 - Enter graphics mode, clear background. Alias for 0x82.
+  0x07 - Enter graphics mode, filled/inverted background. Alias for 0x83.
+
+  0x80 - Enter graphics mode WITHOUT clearing — overlays on top of whatever the
+         cluster is currently rendering (speedometer needle, trip counter, etc.).
+         NOTE: 0x00 does NOT work — 0x80 is the minimum for overlay mode.
+
+  0x81 - Overlay mode, same behaviour as 0x80.
+
+  0x82 - Enter graphics mode, CLEAR region (all pixels OFF = white/unlit),
+         positive polarity (bit=1 means pixel ON).
+         RECOMMENDED: standard mode for all normal graphics output.
+
+  0x83 - Enter graphics mode, FILL region (all pixels ON = dark/lit),
+         inverted polarity (bit=1 means pixel OFF = black hole in dark background).
+         Use for "negative image" effect.
+
+  0x84 - SPLIT-SCREEN mode. Enters graphics mode but the cluster REJECTS
+         GraphicOut packets targeting rows y=24..63 (the middle 40 rows).
+         GraphicOut to that band returns false; top (y=0..23) and bottom
+         (y=64..87) bands render normally.
+         The protected band likely coincides with the cluster's own text/status
+         overlay area (radio, trip counter, etc.).
+
+  0x85 - Enter graphics mode, clear background. Alias for 0x82.
+  0x86 - Enter graphics mode, clear background. Alias for 0x82.
+  0x87 - Enter graphics mode, filled/inverted background. Alias for 0x83.
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 
