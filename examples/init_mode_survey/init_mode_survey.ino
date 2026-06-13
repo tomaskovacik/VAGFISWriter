@@ -14,32 +14,11 @@
  *   3. draw solid horizontal stripes across the whole screen with GraphicOut
  *   4. pause — type what you see + ENTER to advance, 'r' + ENTER to retry
  *
- * Survey results (16-mode run, full screen 0,0,64,88):
- *
- *   0x00  no-op — cluster keeps its own display, graphics mode NOT entered
- *   0x01  graphics mode, clear (white) background, positive pixels
- *   0x02  graphics mode, clear (white) background, positive pixels  (same as 0x82)
- *   0x03  graphics mode, FILLED (dark/red) background, inverted — drawn pixels = holes
- *   0x04  graphics mode, clear background                          (same as 0x82)
- *   0x05  graphics mode, clear background                          (same as 0x82)
- *   0x06  graphics mode, clear background                          (same as 0x82)
- *   0x07  graphics mode, FILLED background, inverted               (same as 0x83)
- *   0x80  graphics mode, no-clear (overlays cluster's own screen)  -- looks like 0x82
- *         when pre-cleared; use without pre-clear step to see the real difference
- *   0x81  same as 0x80
- *   0x82  graphics mode, clear (white) background — STANDARD recommended mode
- *   0x83  graphics mode, FILLED (dark/red) background, inverted
- *   0x84  SPLIT-SCREEN: graphics mode but cluster REJECTS GraphicOut to y=24..63
- *         (rows 24-63 are not writable; the cluster protects that band, likely for
- *         its own text/speedometer overlay). Top 24 rows and bottom 24 rows work.
- *   0x85  graphics mode, clear background                          (same as 0x82)
- *   0x86  graphics mode, clear background                          (same as 0x82)
- *   0x87  graphics mode, FILLED background, inverted               (same as 0x83)
- *
- * Note: the GraphicOut overload for (const uint8_t*) uses memcpy_P internally,
- * so kFill below must be declared PROGMEM. Without PROGMEM the pattern sent is
- * garbage from flash — the survey still works (you can still see background state
- * and accept/reject behaviour) but the drawn pixels are random dots, not stripes.
+ * Expected modes:
+ *   0x00-0x03  low nibble range (0x02=clear rect, 0x03=fill rect known)
+ *   0x04-0x07  unknown — probably unsupported (no ENA response expected)
+ *   0x80-0x83  high nibble range (0x82=clear+positive, 0x80/0x81=overlay known)
+ *   0x84-0x87  variants — behaviour unknown, this is what we are investigating
  *
  * ENA pulse legend (from library):
  *   no pulse    packet accepted silently
@@ -86,9 +65,9 @@ static bool testMode(uint8_t mode) {
   if (mode < 0x10) Serial.print('0');
   Serial.println(mode, HEX);
 
-  // Step 1: clear to known state
-  Serial.println(F("  [clear: initScreen(0,0,64,88, 0x81)]"));
-  fis.initScreen(1, 1, 64, 88, 0x81);
+  // Step 1: reset to known state (exits graphics mode, blanks display)
+  Serial.println(F("  [reset: exit graphics mode + blank display]"));
+  fis.reset();
   delay(300);
 
   // Step 2: apply test mode
