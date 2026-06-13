@@ -32,7 +32,14 @@ Unfortunately, in this mode, it is not possible to control the transmitted data.
 
 // #define ENABLE_IRQ 1
 // #define DEBUG_MEM 1
- #define DEBUG_ENA 1   // Print ENA pulse timing to Serial for protocol analysis
+ #define DEBUG_ENA 1        // Print ENA pulse timing to Serial for protocol analysis
+// #define DEBUG_CORRUPT_CRC  // Flip computed CRC before sending (one-time bad-CRC test)
+
+#ifdef DEBUG_ENA
+  #define FIS_MAX_RETRIES 0  // no retries in debug mode - reveals bad packets immediately
+#else
+  #define FIS_MAX_RETRIES 10
+#endif
 
 /**
    Constructor
@@ -231,6 +238,17 @@ To initialize the entire screen: 0x00, 0x00, 0x40, 0x58 (64x88) - the height siz
 
 To switch from the graphical mode to the standard one, you must send the initialization message with the coordinates (0,0) (1,1).
 The cluster responds with an ~18ms HIGH pulse on the ENA line as ACK that it left graphics mode.
+
+ENA pulse protocol (confirmed by DEBUG_ENA + DEBUG_CORRUPT_CRC tracing):
+  - No pulse:    packet accepted normally (good CRC, cluster stays in current mode)
+  - ~6ms pulse:  CRC NAK — cluster rejected the packet; master must retry the same packet
+  - ~18ms pulse: exit ACK — cluster exited graphics mode (packet had good CRC)
+
+18ms exit-ACK rules:
+  - First initScreen from idle state:  NO pulse (enters graphics mode silently)
+  - Any initScreen while already in graphics mode:  18ms pulse (exits old region,
+    then enters new one — includes re-init to a different sub-region)
+  - reset() = initScreen(0,0,1,1):  always 18ms pulse (special exit-to-normal coords)
 
 */
 
@@ -500,7 +518,7 @@ memcpy_P(&tx_array[5],data,size);
 sendRawData(tx_array);
 }
 
-uint8_t VAGFISWriter::sendRawData(char data[]){
+uint8_t VAGFISWriter::sendRawData(char data[], uint8_t depth){
 
 #ifdef ENABLE_IRQ
   cli();
@@ -522,9 +540,10 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   } else {
         if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
   	if(!waitEnaHigh()) {
+                if (depth >= FIS_MAX_RETRIES) return false;
                 end_time = millis()+5;
 	        while (millis() < end_time);
-		return sendRawData(data);
+		return sendRawData(data, depth+1);
 	  }
   }
   
@@ -543,11 +562,18 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   }
   }
   crc--;
+#ifdef DEBUG_CORRUPT_CRC
+  crc ^= 0xFF;
+#endif
   sendByte(crc);
 #ifdef DEBUG_ENA
   if (crc < 0x10) Serial.print('0');
   Serial.print(crc, HEX);
+#ifdef DEBUG_CORRUPT_CRC
+  Serial.println(F(" [CRC CORRUPTED]"));
+#else
   Serial.println(F(" [CRC]"));
+#endif
 #endif
   if (__singleENA) {
 	stopENA();
@@ -556,25 +582,34 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
   } else
 	if(!waitEnaLow())
 		return false;
-  //check if we do not get any error pulse from cluster
+  // ENA pulse after packet: ~6ms = CRC NAK (retry), ~18ms = exit ACK (done)
 #ifdef DEBUG_ENA
   { uint32_t t0 = micros();
     if (waitEnaHigh(4000)) {
       uint32_t t1 = micros();
       waitEnaLow(20000);
       uint32_t t2 = micros();
+      uint32_t w = t2 - t1;
       Serial.print(F("ENA pulse: latency="));
       Serial.print(t1 - t0);
       Serial.print(F("us width="));
-      Serial.print(t2 - t1);
-      Serial.println(F("us -> exit ACK, done"));
-      return true;
+      Serial.print(w);
+      if (w >= 10000) {
+        Serial.println(F("us -> exit ACK (18ms)"));
+        return true;
+      }
+      Serial.println(F("us -> CRC NAK (6ms)"));
+      if (depth >= FIS_MAX_RETRIES) return false;
+      return sendRawData(data, depth+1);
     }
   }
 #else
-  if(waitEnaHigh(4000)){
-    waitEnaLow(20000); // wait out the ~18ms exit-ACK pulse
-    return true;
+  if (waitEnaHigh(4000)) {
+    uint32_t pw = micros();
+    waitEnaLow(20000);
+    if (micros() - pw >= 10000) return true; // 18ms exit ACK
+    if (depth >= FIS_MAX_RETRIES) return false;
+    return sendRawData(data, depth+1); // 6ms CRC NAK - retry
   }
 #endif
 
@@ -584,7 +619,7 @@ uint8_t VAGFISWriter::sendRawData(char data[]){
 return true;
 }
 
-uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
+uint8_t VAGFISWriter::sendRawData(uint8_t data[], uint8_t depth){
 
 #ifdef ENABLE_IRQ
   cli();
@@ -605,10 +640,11 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
         sendByte(data[FIS_MSG_COMMAND]);
   } else {
         if (!sendSingleByteCommand(data[FIS_MSG_COMMAND])) return false;
-        if(!waitEnaHigh(100)) {
+        if(!waitEnaHigh()) {
+                if (depth >= FIS_MAX_RETRIES) return false;
                 end_time = millis()+5;
 		while (millis() < end_time);
-                return sendRawData(data);
+                return sendRawData(data, depth+1);
           }
   }
 
@@ -627,11 +663,18 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   }
   }
   crc--;
+#ifdef DEBUG_CORRUPT_CRC
+  crc ^= 0xFF;
+#endif
   sendByte(crc);
 #ifdef DEBUG_ENA
   if (crc < 0x10) Serial.print('0');
   Serial.print(crc, HEX);
+#ifdef DEBUG_CORRUPT_CRC
+  Serial.println(F(" [CRC CORRUPTED]"));
+#else
   Serial.println(F(" [CRC]"));
+#endif
 #endif
   if (__singleENA) {
 	  stopENA();
@@ -640,29 +683,34 @@ uint8_t VAGFISWriter::sendRawData(uint8_t data[]){
   } else
 	  if(!waitEnaLow())
 		  return false;
-  //check if we do not get any error pulse from cluster
+  // ENA pulse after packet: ~6ms = CRC NAK (retry), ~18ms = exit ACK (done)
 #ifdef DEBUG_ENA
   { uint32_t t0 = micros();
     if (waitEnaHigh(4000)) {
       uint32_t t1 = micros();
       waitEnaLow(20000);
       uint32_t t2 = micros();
-      Serial.print(F("ENA pulse (uint8): latency="));
+      uint32_t w = t2 - t1;
+      Serial.print(F("ENA pulse: latency="));
       Serial.print(t1 - t0);
       Serial.print(F("us width="));
-      Serial.print(t2 - t1);
-      Serial.println(F("us -> retry"));
-      end_time = millis() + 10;
-      while (millis() < end_time);
-      return sendRawData(data);
+      Serial.print(w);
+      if (w >= 10000) {
+        Serial.println(F("us -> exit ACK (18ms)"));
+        return true;
+      }
+      Serial.println(F("us -> CRC NAK (6ms)"));
+      if (depth >= FIS_MAX_RETRIES) return false;
+      return sendRawData(data, depth+1);
     }
   }
 #else
-  if(waitEnaHigh(4000)){
+  if (waitEnaHigh(4000)) {
+    uint32_t pw = micros();
     waitEnaLow(20000);
-    end_time = millis() + 10;
-    while (millis() < end_time);
-    return sendRawData(data);
+    if (micros() - pw >= 10000) return true; // 18ms exit ACK
+    if (depth >= FIS_MAX_RETRIES) return false;
+    return sendRawData(data, depth+1); // 6ms CRC NAK - retry
   }
 #endif
 
@@ -759,6 +807,9 @@ uint8_t packet_size = (sizex+7)/8; // how much byte per packet
 void VAGFISWriter::sendKeepAliveMsg() {
   end_time = millis()+100;
   while (millis() < end_time);
+#ifdef DEBUG_ENA
+  Serial.println(F("TX[1]: C3 [keepalive]"));
+#endif
   sendSingleByteCommand(0xC3);
   end_time = millis()+100;
   while (millis() < end_time);
