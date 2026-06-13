@@ -9,21 +9,43 @@
  * Enable DEBUG_ENA in VAGFISWriter.cpp before flashing.
  *
  * Workflow per mode:
- *   1. clear full screen with 0x82 (known baseline)
+ *   1. reset() — exit graphics mode and blank display (known baseline)
  *   2. apply the test mode with initScreen(0, 0, 64, 88, mode)
- *   3. draw solid horizontal stripes across the whole screen with GraphicOut
+ *   3. draw solid 0xFF horizontal stripes across the whole screen with GraphicOut
  *   4. pause — type what you see + ENTER to advance, 'r' + ENTER to retry
  *
- * Expected modes:
- *   0x00-0x03  low nibble range (0x02=clear rect, 0x03=fill rect known)
- *   0x04-0x07  unknown — probably unsupported (no ENA response expected)
- *   0x80-0x83  high nibble range (0x82=clear+positive, 0x80/0x81=overlay known)
- *   0x84-0x87  variants — behaviour unknown, this is what we are investigating
+ * Survey results (confirmed, reset() baseline, PROGMEM stripes):
+ *
+ *   0x00-0x07  NOT display-mode initializers. Sub-region operations only:
+ *                0x02 — clear (pixels OFF) a sub-region within an active session
+ *                0x03 — fill  (pixels ON)  a sub-region within an active session
+ *                others — no observed effect
+ *              GraphicOut data is accepted but nothing renders from normal state.
+ *
+ *   0x80  PROTECTED OVERLAY. Overlays cluster's live display without clearing.
+ *         Cluster refuses GraphicOut to its own text/UI rows (no ACK for those).
+ *         Only non-protected rows accept data and show stripes.
+ *
+ *   0x81  FULL OVERLAY. Same as 0x80 (no clear) but NO write-protection.
+ *         Overwrites the cluster's own text and UI completely.
+ *
+ *   0x82  CLEAR + POSITIVE (recommended). Clears screen white, full access.
+ *
+ *   0x83  FILL + INVERTED. Screen filled dark/red, inverted polarity.
+ *         0xFF pixels appear dark on a red/dark background.
+ *
+ *   0x84  Full overlay, no text protection (like 0x81).
+ *   0x85  Same as 0x84.
+ *   0x86  Same as 0x82 (clear + positive).
+ *   0x87  Same as 0x83 (fill + inverted).
  *
  * ENA pulse legend (from library):
  *   no pulse    packet accepted silently
- *   ~6ms pulse  CRC NAK (should not appear; library retries automatically)
+ *   ~6ms pulse  CRC NAK (library retries automatically)
  *   ~18ms pulse exit ACK (cluster exited graphics mode)
+ *
+ * Note: kFill MUST be PROGMEM — the const uint8_t* GraphicOut overload uses
+ * memcpy_P. Without PROGMEM, random flash bytes are sent instead of 0xFF.
  */
 
 #include "VAGFISWriter.h"
