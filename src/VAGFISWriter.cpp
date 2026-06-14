@@ -199,40 +199,50 @@ CN ----> Number of bytes
 
 CM ----> initialization command (mode byte):
 
-  Two-step usage pattern:
-    1. Enter graphics mode:  initScreen(x1, y1, x2, y2, 0x80 or 0x82/0x83)
-    2. Init sub-rectangles:  initScreen(x1, y1, x2, y2, 0x02 or 0x03)
+  The mode byte is BIT-BASED. Only three bits have observed effects:
 
-  --- CONFIRMED ---
+    bit 7 (0x80): 1 = session initializer — enter graphics mode for this rect
+                  0 = in-session sub-region operation (must already be in graphics mode)
 
-  0x80 - BASE GRAPHICS INIT. Enters graphics overlay mode on top of the cluster's
-         own display without clearing it. Writes over cluster text rows freely.
+    bit 1 (0x02): 1 = perform an immediate fill or clear on the defined rectangle
+                  0 = no immediate pixel operation
 
-  0x82 - CLEAR + POSITIVE. Like 0x80 but clears the region first (pixels OFF).
-         Positive polarity: bit=1 → pixel ON. Standard recommended mode.
+    bit 0 (0x01): (only meaningful when bit 1 = 1)
+                  0 = clear the rectangle (all pixels OFF = black/unlit)
+                  1 = fill  the rectangle (all pixels ON  = red/lit)
 
-  0x83 - FILL + POSITIVE. Like 0x80 but fills the region with red first (pixels ON).
-         Use for dark/red background effects.
+    bits 2-6: no observed effect — cluster ignores them
 
-  0x02 - CLEAR RECTANGLE. Clears (pixels OFF) the specified rectangle within an
-         active graphics session. Real-world confirmed.
-         Example — draw border outline:
-           initScreen(14, 26, 37, 50, 0x03); // fill outer rectangle red
-           initScreen(15, 27, 35, 48, 0x02); // clear inside -> outline only
+  This means only six distinct behaviours exist; all other values are aliases:
 
-  0x03 - FILL RECTANGLE. Fills (pixels ON = red) the specified rectangle within
-         an active graphics session. Real-world confirmed.
-         Example:
-           initScreen(10, 10, 54, 78, 0x03); // solid red rectangle
+    0x80 = enter graphics (overlay, no fill/clear, normal polarity)
+    0x82 = enter graphics + clear rect (normal polarity)  — RECOMMENDED
+    0x83 = enter graphics + fill rect red (inverted polarity:
+           subsequent GraphicOut 0xFF draws black, not red)
+    0x00 = define active sub-region, no immediate pixel operation
+    0x02 = define sub-region AND clear it                 — real-world confirmed
+    0x03 = define sub-region AND fill it red              — real-world confirmed
 
-  --- NOT YET CONFIRMED ---
+  Common aliases (bit 2 set, no extra effect):
+    0x01 = 0x00  (bit 0 alone with bit 1 = 0 has no effect)
+    0x04 = 0x00
+    0x05 = 0x00
+    0x06 = 0x02
+    0x07 = 0x03
+    0x81 = 0x80
+    0x84 = 0x80
+    0x85 = 0x80
+    0x86 = 0x82
+    0x87 = 0x83
 
-  0x01 - Sub-region init; exact behaviour unknown (possibly clear+positive scoped
-         to the rectangle, like 0x82 but without entering graphics mode).
+  Typical two-step usage:
+    1. initScreen(0,  0,  64, 88, 0x82);          // clear full screen, enter graphics
+    2. initScreen(x1, y1, x2, y2, 0x03);          // fill a sub-rectangle red
+       initScreen(x1+1, y1+1, x2-1, y2-1, 0x02); // clear inside it -> red outline
 
-  0x81, 0x84-0x87 - Variants of 0x80/0x82/0x83; differences not confirmed.
-
-  0x00, 0x04-0x07 - No observed effect.
+  Polarity note: 0x83 sets inverted polarity for the session. In that mode
+  GraphicOut 0xFF renders as black (OFF) not red (ON). Use 0x82 for normal
+  positive rendering.
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 

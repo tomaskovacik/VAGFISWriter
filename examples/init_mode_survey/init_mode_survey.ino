@@ -17,12 +17,27 @@
  *   - Does the sub_mode immediately alter the centred rect (clear/fill/nothing)?
  *   - Do the GraphicOut stripes appear everywhere or only inside the centred rect?
  *
- * CONFIRMED knowledge going in:
- *   0x80  base overlay, no clear, no write protection
- *   0x82  base overlay + clear (white background)
- *   0x83  base overlay + fill red
- *   0x02  clears defined rectangle (real-world confirmed)
- *   0x03  fills defined rectangle red (real-world confirmed)
+ * MODE BYTE IS BIT-BASED (confirmed by 8x8 combination survey):
+ *
+ *   bit 7 (0x80): 1 = session init (enter graphics mode for this rect)
+ *                 0 = in-session sub-region op (must already be in graphics mode)
+ *   bit 1 (0x02): 1 = perform fill or clear on the defined rect immediately
+ *                 0 = no immediate pixel operation
+ *   bit 0 (0x01): 0 = clear (pixels OFF / white)
+ *                 1 = fill  (pixels ON  / red)
+ *                 (only meaningful when bit 1 = 1)
+ *   bits 2-6: no observed effect — cluster ignores them
+ *
+ * Only 6 distinct behaviours exist; all other values are aliases:
+ *   0x80 = enter graphics, no fill/clear, normal polarity
+ *   0x82 = enter graphics + clear                          [RECOMMENDED]
+ *   0x83 = enter graphics + fill red (inverted polarity — 0xFF draws black)
+ *   0x00 = define sub-region, no immediate pixel op
+ *   0x02 = define sub-region + clear it                   [real-world confirmed]
+ *   0x03 = define sub-region + fill it red                [real-world confirmed]
+ *
+ * Aliases: 0x01=0x00, 0x04=0x00, 0x05=0x00, 0x06=0x02, 0x07=0x03
+ *          0x81=0x80, 0x84=0x80, 0x85=0x80, 0x86=0x82, 0x87=0x83
  *
  * Enable DEBUG_ENA in VAGFISWriter.cpp before flashing.
  *
