@@ -199,39 +199,40 @@ CN ----> Number of bytes
 
 CM ----> initialization command (mode byte):
 
-  Working hypothesis (needs further verification):
+  Two-step usage pattern:
+    1. Enter graphics mode:  initScreen(x1, y1, x2, y2, 0x80 or 0x82/0x83)
+    2. Init sub-rectangles:  initScreen(x1, y1, x2, y2, 0x02 or 0x03)
 
-  --- STEP 1: enter graphics mode (0x80 or 0x8x) ---
+  --- CONFIRMED ---
 
-  0x80 - BASE INIT. Enters graphics mode as an overlay on the cluster's own display.
-         Does NOT clear the screen. Confirmed to write over cluster text rows with no
-         protection. Earlier observations of "rejected rows" were communication errors.
+  0x80 - BASE GRAPHICS INIT. Enters graphics overlay mode on top of the cluster's
+         own display without clearing it. Writes over cluster text rows freely.
 
-  0x82 - CLEAR + POSITIVE. Same as 0x80 but also clears the region first (pixels OFF).
+  0x82 - CLEAR + POSITIVE. Like 0x80 but clears the region first (pixels OFF).
          Positive polarity: bit=1 → pixel ON. Standard recommended mode.
 
-  0x83 - FILL + INVERTED. Same as 0x80 but fills the region first (pixels ON).
-         Inverted polarity: bit=1 → pixel OFF (dark hole in lit background).
+  0x83 - FILL + POSITIVE. Like 0x80 but fills the region with red first (pixels ON).
+         Use for dark/red background effects.
 
-  0x81, 0x84-0x87 - Variants; exact differences from 0x80/0x82/0x83 not yet confirmed.
+  0x02 - CLEAR RECTANGLE. Clears (pixels OFF) the specified rectangle within an
+         active graphics session. Real-world confirmed.
+         Example — draw border outline:
+           initScreen(14, 26, 37, 50, 0x03); // fill outer rectangle red
+           initScreen(15, 27, 35, 48, 0x02); // clear inside -> outline only
 
-  --- STEP 2: init sub-regions (0x01/0x02/0x03 used after 0x80) ---
+  0x03 - FILL RECTANGLE. Fills (pixels ON = red) the specified rectangle within
+         an active graphics session. Real-world confirmed.
+         Example:
+           initScreen(10, 10, 54, 78, 0x03); // solid red rectangle
 
-  After entering graphics mode with 0x80, use these to define specific rectangles:
+  --- NOT YET CONFIRMED ---
 
-  0x01 - Init sub-region (behaviour under investigation — possibly clear + positive
-         like 0x82 but scoped to the given rectangle).
+  0x01 - Sub-region init; exact behaviour unknown (possibly clear+positive scoped
+         to the rectangle, like 0x82 but without entering graphics mode).
 
-  0x02 - Clear (pixels OFF) the specified rectangle within the active session.
-         Use to erase a sub-region or cut a hole inside a filled area:
-           initScreen(14, 26, 37, 50, 0x03); // fill outer rectangle
-           initScreen(15, 27, 35, 48, 0x02); // clear inside -> border outline
+  0x81, 0x84-0x87 - Variants of 0x80/0x82/0x83; differences not confirmed.
 
-  0x03 - Fill (pixels ON) the specified rectangle within the active session.
-         Use to draw a solid block:
-           initScreen(10, 10, 54, 78, 0x03); // solid filled rectangle
-
-  0x00, 0x04-0x07 - No confirmed effect; cluster accepts packets but nothing renders.
+  0x00, 0x04-0x07 - No observed effect.
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 

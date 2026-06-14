@@ -14,21 +14,21 @@
  *   3. draw solid 0xFF horizontal stripes across the whole screen with GraphicOut
  *   4. pause — type what you see + ENTER to advance, 'r' + ENTER to retry
  *
- * Working hypothesis (needs further verification):
+ * Two-step usage pattern:
+ *   1. Enter graphics mode:  initScreen(x1, y1, x2, y2, 0x80 or 0x82/0x83)
+ *   2. Init sub-rectangles:  initScreen(x1, y1, x2, y2, 0x02 or 0x03)
  *
- *   STEP 1 — enter graphics mode with an 0x8x mode:
- *     0x80  Base overlay init. Overlays cluster display without clearing.
- *           Confirmed to write over cluster text rows — no write protection.
- *           (Earlier "rejected rows" were communication errors, not real protection.)
- *     0x82  Like 0x80 but clears region first (recommended for clean graphics).
- *     0x83  Like 0x80 but fills region first (inverted polarity).
- *     0x81, 0x84-0x87  Variants; exact differences not yet confirmed.
+ * CONFIRMED modes:
+ *   0x80  Base overlay init. No clear. Writes over cluster text freely.
+ *   0x82  Like 0x80 but clears region first. Standard recommended mode.
+ *   0x83  Like 0x80 but fills region red first.
+ *   0x02  Clear rectangle within active session (real-world confirmed).
+ *   0x03  Fill rectangle red within active session (real-world confirmed).
  *
- *   STEP 2 — optionally init sub-rectangles using 0x0x modes (after 0x80):
- *     0x01  Init sub-region (exact behaviour under investigation).
- *     0x02  Clear (pixels OFF) the specified rectangle within the session.
- *     0x03  Fill  (pixels ON)  the specified rectangle within the session.
- *     0x00, 0x04-0x07  No confirmed effect.
+ * NOT YET CONFIRMED:
+ *   0x01  Sub-region init; behaviour unknown.
+ *   0x81, 0x84-0x87  Variants; differences from 0x80/0x82/0x83 unknown.
+ *   0x00, 0x04-0x07  No observed effect.
  *
  * ENA pulse legend (from library):
  *   no pulse    packet accepted silently
