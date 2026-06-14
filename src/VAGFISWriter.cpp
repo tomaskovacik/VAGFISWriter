@@ -240,6 +240,12 @@ CM ----> initialization command (mode byte):
   covered a larger area. GraphicOut coordinates outside the current window are
   silently ignored by the cluster.
 
+  GraphicOut/GraphicFromArray coordinates are RELATIVE to the active window
+  origin (X1, Y1 of the last initScreen). Confirmed by real-world usage:
+    initScreen(14, 26, 37, 50, 0x03); // fill outer rect red
+    initScreen(15, 27, 35, 48, 0x02); // clear inner rect, window = (15,27)
+    GraphicFromArray(8, 1, 20, 46, data, 3); // draws at absolute (23, 28)
+
   0x83 polarity — confirmed with direct-write GraphicOut (mode=0x02):
   No polarity inversion. GraphicOut 0xFF = pixels ON (red) regardless of base mode.
   On a 0x83 (filled red) background, red pixels are invisible; use 0x02 sub-mode
