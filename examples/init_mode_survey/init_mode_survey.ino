@@ -31,7 +31,7 @@
  * Only 6 distinct behaviours exist; all other values are aliases:
  *   0x80 = enter graphics, no fill/clear, normal polarity
  *   0x82 = enter graphics + clear                          [RECOMMENDED]
- *   0x83 = enter graphics + fill red (framebuffer 0xFF; GraphicOut XOR 0xFF = 0x00 = black)
+ *   0x83 = enter graphics + fill red (behaviour with direct-write GraphicOut not yet confirmed)
  *   0x00 = define sub-region, no immediate pixel op
  *   0x02 = define sub-region + clear it                   [real-world confirmed]
  *   0x03 = define sub-region + fill it red                [real-world confirmed]
@@ -119,9 +119,10 @@ static bool testCombo(uint8_t baseMode, uint8_t subMode) {
   delay(100);
 
   // Step 4: draw solid stripes across the full screen
+  // mode=0x02 = standard direct write (NOT XOR); use 0x01 for XOR mode
   Serial.println(F("  [4] GraphicOut 0xFF stripes full screen"));
   for (uint8_t y = 0; y < 88; y += 8) {
-    fis.GraphicOut(0, y, 8, kFill, 0x01);
+    fis.GraphicOut(0, y, 8, kFill, 0x02);
   }
 
   // Step 5: observe

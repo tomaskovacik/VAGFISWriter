@@ -234,18 +234,12 @@ CM ----> initialization command (mode byte):
     0x86 = 0x82
     0x87 = 0x83
 
-  GraphicOut XOR rendering: GraphicOut data is XORed with the existing
-  framebuffer, not written directly. Consequence:
-
-    0x82 base (framebuffer cleared = 0x00):
-      GraphicOut 0xFF → 0x00 XOR 0xFF = 0xFF → pixels ON (red)  ← normal looking
-
-    0x83 base (framebuffer filled = 0xFF):
-      GraphicOut 0xFF → 0xFF XOR 0xFF = 0x00 → pixels OFF (black) ← appears inverted
-
-    0x83 + 0x02 sub (sub-region cleared to 0x00 inside filled screen):
-      GraphicOut 0xFF in sub-region → 0x00 XOR 0xFF = 0xFF → red lines
-      Rest of screen stays filled red → XOR 0xFF = 0x00 → black (expected if clipped)
+  GraphicOut mode byte (UU) is separate from initScreen mode:
+    bit 0 (0x01): XOR with existing framebuffer content
+    bit 1 (0x02): standard direct write (overwrites framebuffer)
+  Survey tests used mode=0x01 (XOR), so observed "inverted" lines under 0x83
+  were XOR artefacts, not an initScreen polarity effect. Behaviour of 0x83
+  with direct-write GraphicOut (mode=0x02) is not yet characterised.
 
   Typical two-step usage:
     1. initScreen(0,  0,  64, 88, 0x82);          // clear full screen, enter graphics
