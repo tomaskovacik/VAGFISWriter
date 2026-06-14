@@ -1,42 +1,38 @@
 /*
- * initScreen mode survey
+ * initScreen two-step combination survey
  *
- * Systematically tests every initScreen mode byte and pauses after each one
- * so you can observe the cluster and type your notes into the Serial console.
- * Your input is echoed back so the full log captures both the protocol output
- * (from DEBUG_ENA) and your visual observations in one place.
+ * Tests all 64 combinations of base mode × sub-region mode:
+ *   base modes:  0x80-0x87  (enter graphics mode)
+ *   sub modes:   0x00-0x07  (sub-region operation applied after)
+ *
+ * Sequence per combination:
+ *   1. reset()                              -- known clean state
+ *   2. initScreen(0,0,64,88, base_mode)     -- enter graphics (full screen)
+ *   3. initScreen(16,22,48,66, sub_mode)    -- sub-region op (centred rect)
+ *   4. GraphicOut solid stripes full screen -- reveal what is writable
+ *   5. pause for observation
+ *
+ * What to look for:
+ *   - Does the base_mode clear (white), fill (red), or overlay (cluster native)?
+ *   - Does the sub_mode immediately alter the centred rect (clear/fill/nothing)?
+ *   - Do the GraphicOut stripes appear everywhere or only inside the centred rect?
+ *
+ * CONFIRMED knowledge going in:
+ *   0x80  base overlay, no clear, no write protection
+ *   0x82  base overlay + clear (white background)
+ *   0x83  base overlay + fill red
+ *   0x02  clears defined rectangle (real-world confirmed)
+ *   0x03  fills defined rectangle red (real-world confirmed)
  *
  * Enable DEBUG_ENA in VAGFISWriter.cpp before flashing.
  *
- * Workflow per mode:
- *   1. reset() — exit graphics mode and blank display (known baseline)
- *   2. apply the test mode with initScreen(0, 0, 64, 88, mode)
- *   3. draw solid 0xFF horizontal stripes across the whole screen with GraphicOut
- *   4. pause — type what you see + ENTER to advance, 'r' + ENTER to retry
+ * Note: kFill MUST be PROGMEM — the const uint8_t* GraphicOut overload uses
+ * memcpy_P. Without PROGMEM, random flash bytes are sent instead of 0xFF.
  *
- * Two-step usage pattern:
- *   1. Enter graphics mode:  initScreen(x1, y1, x2, y2, 0x80 or 0x82/0x83)
- *   2. Init sub-rectangles:  initScreen(x1, y1, x2, y2, 0x02 or 0x03)
- *
- * CONFIRMED modes:
- *   0x80  Base overlay init. No clear. Writes over cluster text freely.
- *   0x82  Like 0x80 but clears region first. Standard recommended mode.
- *   0x83  Like 0x80 but fills region red first.
- *   0x02  Clear rectangle within active session (real-world confirmed).
- *   0x03  Fill rectangle red within active session (real-world confirmed).
- *
- * NOT YET CONFIRMED:
- *   0x01  Sub-region init; behaviour unknown.
- *   0x81, 0x84-0x87  Variants; differences from 0x80/0x82/0x83 unknown.
- *   0x00, 0x04-0x07  No observed effect.
- *
- * ENA pulse legend (from library):
+ * ENA pulse legend:
  *   no pulse    packet accepted silently
  *   ~6ms pulse  CRC NAK (library retries automatically)
  *   ~18ms pulse exit ACK (cluster exited graphics mode)
- *
- * Note: kFill MUST be PROGMEM — the const uint8_t* GraphicOut overload uses
- * memcpy_P. Without PROGMEM, random flash bytes are sent instead of 0xFF.
  */
 
 #include "VAGFISWriter.h"
@@ -47,113 +43,124 @@
 
 VAGFISWriter fis(FIS_CLK, FIS_DATA, FIS_ENA);
 
-// All-on pattern: 8 bytes of 0xFF = solid 64px-wide row.
-// MUST be PROGMEM: the const uint8_t* GraphicOut overload uses memcpy_P.
+// Solid 64px-wide row. MUST be PROGMEM: const uint8_t* GraphicOut uses memcpy_P.
 static const uint8_t kFill[8] PROGMEM = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+// Sub-region rectangle: centred on 64x88 screen, clearly inside but not full-screen.
+#define SUB_X1  16
+#define SUB_Y1  22
+#define SUB_X2  48
+#define SUB_Y2  66
 
 // -----------------------------------------------------------------------
 // Read one line from Serial, echoing each character as it arrives.
-// Blocks until '\n' is received. Returns the typed string (without '\n').
 // -----------------------------------------------------------------------
 static String serialReadLine() {
-  while (Serial.available()) Serial.read(); // discard stale bytes
+  while (Serial.available()) Serial.read();
   String s;
   for (;;) {
     if (!Serial.available()) continue;
     char c = Serial.read();
     if (c == '\r') continue;
     if (c == '\n') { Serial.println(); break; }
-    Serial.print(c); // echo so terminal shows what user typed
+    Serial.print(c);
     s += c;
   }
   return s;
 }
 
-// -----------------------------------------------------------------------
-// Run one mode test. Returns false if user wants to retry (typed 'r').
-// -----------------------------------------------------------------------
-static bool testMode(uint8_t mode) {
-  Serial.println();
-  Serial.print(F("--- mode 0x"));
-  if (mode < 0x10) Serial.print('0');
-  Serial.println(mode, HEX);
+static void printHex(uint8_t v) {
+  if (v < 0x10) Serial.print('0');
+  Serial.print(v, HEX);
+}
 
-  // Step 1: reset to known state (exits graphics mode, blanks display)
-  Serial.println(F("  [reset: exit graphics mode + blank display]"));
+// -----------------------------------------------------------------------
+// Run one base+sub combination. Returns false if user wants to retry.
+// -----------------------------------------------------------------------
+static bool testCombo(uint8_t baseMode, uint8_t subMode) {
+  Serial.println();
+  Serial.print(F("=== base=0x")); printHex(baseMode);
+  Serial.print(F(" sub=0x"));    printHex(subMode);
+  Serial.println(F(" ==="));
+
+  // Step 1: reset
+  Serial.println(F("  [1] reset()"));
   fis.reset();
   delay(300);
 
-  // Step 2: apply test mode
-  Serial.print(F("  [test:  initScreen(0,0,64,88, 0x"));
-  if (mode < 0x10) Serial.print('0');
-  Serial.print(mode, HEX);
-  Serial.println(F(")]"));
-  fis.initScreen(0, 0, 64, 88, mode);
+  // Step 2: enter graphics mode (full screen)
+  Serial.print(F("  [2] initScreen(0,0,64,88, 0x")); printHex(baseMode); Serial.println(')');
+  fis.initScreen(0, 0, 64, 88, baseMode);
   delay(100);
 
-  // Step 3: draw solid stripes — if mode entered graphics mode, these appear
-  Serial.println(F("  [draw:  GraphicOut stripes across full screen]"));
+  // Step 3: sub-region op on centred rect
+  Serial.print(F("  [3] initScreen("));
+  Serial.print(SUB_X1); Serial.print(',');
+  Serial.print(SUB_Y1); Serial.print(',');
+  Serial.print(SUB_X2); Serial.print(',');
+  Serial.print(SUB_Y2);
+  Serial.print(F(", 0x")); printHex(subMode); Serial.println(')');
+  fis.initScreen(SUB_X1, SUB_Y1, SUB_X2, SUB_Y2, subMode);
+  delay(100);
+
+  // Step 4: draw solid stripes across the full screen
+  Serial.println(F("  [4] GraphicOut 0xFF stripes full screen"));
   for (uint8_t y = 0; y < 88; y += 8) {
     fis.GraphicOut(0, y, 8, kFill, 0x01);
   }
 
-  // Step 4: wait for observation
-  Serial.print(F(">>> 0x"));
-  if (mode < 0x10) Serial.print('0');
-  Serial.print(mode, HEX);
-  Serial.print(F(": what do you see? (ENTER=next, r=retry): "));
+  // Step 5: observe
+  Serial.print(F(">>> base=0x")); printHex(baseMode);
+  Serial.print(F(" sub=0x"));     printHex(subMode);
+  Serial.print(F(" | what do you see? (ENTER=next, r=retry): "));
 
   String obs = serialReadLine();
 
   if (obs.equalsIgnoreCase("r")) {
-    Serial.println(F("  [retrying...]"));
+    Serial.println(F("  [retrying]"));
     return false;
   }
 
-  // log the observation alongside the mode so the full serial log is self-contained
-  Serial.print(F("  OBS[0x"));
-  if (mode < 0x10) Serial.print('0');
-  Serial.print(mode, HEX);
+  Serial.print(F("  OBS[0x")); printHex(baseMode);
+  Serial.print(F("+0x"));      printHex(subMode);
   Serial.print(F("]: "));
-  if (obs.length() > 0) {
-    Serial.println(obs);
-  } else {
-    Serial.println(F("(no note)"));
-  }
+  Serial.println(obs.length() > 0 ? obs : "(no note)");
 
   return true;
 }
 
 // -----------------------------------------------------------------------
-// Modes to survey — add or remove as needed
+// Mode tables
 // -----------------------------------------------------------------------
-static const uint8_t kModes[] = {
-  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-  0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
-};
+static const uint8_t kBaseModes[] = { 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87 };
+static const uint8_t kSubModes[]  = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
 void setup() {
-  fis.begin(); // Serial.begin(115200) called inside when DEBUG_ENA is set
+  fis.begin();
   delay(500);
 
-  Serial.println(F("\n\n=== initScreen mode survey ==="));
-  Serial.println(F("Workflow: clear(0x82) -> initScreen(mode) -> draw stripes -> observe"));
-  Serial.println(F("ENTER = advance to next mode"));
-  Serial.println(F("'r'   = retry same mode"));
-  Serial.println(F("type any text before ENTER to log your observation"));
+  Serial.println(F("\n\n=== initScreen combination survey ==="));
+  Serial.println(F("64 combinations: 8 base modes x 8 sub modes"));
+  Serial.println(F("Sequence per test: reset -> initScreen(full,base) -> initScreen(rect,sub) -> stripes"));
+  Serial.println(F("Sub-region rect: (16,22)-(48,66) centred on 64x88 screen"));
+  Serial.println(F("ENTER = next  |  r = retry  |  type observation before ENTER to log it"));
   Serial.println();
-  Serial.print(F("Testing "));
-  Serial.print((uint8_t)sizeof(kModes));
-  Serial.println(F(" modes. Press ENTER to begin."));
+  Serial.println(F("Press ENTER to begin."));
   serialReadLine();
 }
 
 void loop() {
-  for (uint8_t i = 0; i < sizeof(kModes); i++) {
-    while (!testMode(kModes[i]));
+  for (uint8_t b = 0; b < sizeof(kBaseModes); b++) {
+    Serial.println();
+    Serial.print(F("--- base mode 0x")); printHex(kBaseModes[b]);
+    Serial.println(F(" ---"));
+
+    for (uint8_t s = 0; s < sizeof(kSubModes); s++) {
+      while (!testCombo(kBaseModes[b], kSubModes[s]));
+    }
   }
 
   fis.reset();
-  Serial.println(F("\n=== survey complete — press ENTER to run again ==="));
+  Serial.println(F("\n=== survey complete. Press ENTER to run again. ==="));
   serialReadLine();
 }
