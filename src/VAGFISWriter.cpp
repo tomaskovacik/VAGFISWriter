@@ -234,17 +234,32 @@ CM ----> initialization command (mode byte):
     0x86 = 0x82
     0x87 = 0x83
 
+  ACTIVE WINDOW — confirmed by combination survey:
+  Every initScreen call redefines the active drawing window. The LAST initScreen
+  sent is what constrains subsequent GraphicOut calls — even if an earlier call
+  covered a larger area. GraphicOut coordinates outside the current window are
+  silently ignored by the cluster.
+
+  0x83 polarity — confirmed with direct-write GraphicOut (mode=0x02):
+  No polarity inversion. GraphicOut 0xFF = pixels ON (red) regardless of base mode.
+  On a 0x83 (filled red) background, red pixels are invisible; use 0x02 sub-mode
+  first to clear a patch, then GraphicOut into that patch to show red on black.
+  Earlier "inverted" observations were XOR artefacts (GraphicOut mode=0x01).
+
   GraphicOut mode byte (UU) is separate from initScreen mode:
     bit 0 (0x01): XOR with existing framebuffer content
     bit 1 (0x02): standard direct write (overwrites framebuffer)
-  Survey tests used mode=0x01 (XOR), so observed "inverted" lines under 0x83
-  were XOR artefacts, not an initScreen polarity effect. Behaviour of 0x83
-  with direct-write GraphicOut (mode=0x02) is not yet characterised.
 
-  Typical two-step usage:
-    1. initScreen(0,  0,  64, 88, 0x82);          // clear full screen, enter graphics
-    2. initScreen(x1, y1, x2, y2, 0x03);          // fill a sub-rectangle red
-       initScreen(x1+1, y1+1, x2-1, y2-1, 0x02); // clear inside it -> red outline
+  Typical usage:
+    // Clear full screen and enter graphics mode
+    initScreen(0, 0, 64, 88, 0x82);
+
+    // Draw a red-filled rectangle with a black outline:
+    initScreen(x1,   y1,   x2,   y2,   0x03); // fill outer rect red
+    initScreen(x1+1, y1+1, x2-1, y2-1, 0x02); // clear inside -> outline
+
+    // Draw graphics inside the inner cleared area:
+    GraphicOut(x1+1, y1+1, bytes, data, 0x02); // direct write into window
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 

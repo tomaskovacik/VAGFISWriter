@@ -31,7 +31,7 @@
  * Only 6 distinct behaviours exist; all other values are aliases:
  *   0x80 = enter graphics, no fill/clear, normal polarity
  *   0x82 = enter graphics + clear                          [RECOMMENDED]
- *   0x83 = enter graphics + fill red (behaviour with direct-write GraphicOut not yet confirmed)
+ *   0x83 = enter graphics + fill red (no polarity inversion; 0xFF = red, invisible on red bg)
  *   0x00 = define sub-region, no immediate pixel op
  *   0x02 = define sub-region + clear it                   [real-world confirmed]
  *   0x03 = define sub-region + fill it red                [real-world confirmed]
@@ -148,8 +148,8 @@ static bool testCombo(uint8_t baseMode, uint8_t subMode) {
 // -----------------------------------------------------------------------
 // Mode tables
 // -----------------------------------------------------------------------
-static const uint8_t kBaseModes[] = { 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87 };
-static const uint8_t kSubModes[]  = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+static const uint8_t kBaseModes[] = { 0x80, 0x81, 0x82, 0x83};
+static const uint8_t kSubModes[]  = { 0x00, 0x01, 0x02, 0x03};
 
 void setup() {
   fis.begin();
