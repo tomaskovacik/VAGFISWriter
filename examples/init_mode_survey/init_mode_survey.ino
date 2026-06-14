@@ -31,7 +31,7 @@
  * Only 6 distinct behaviours exist; all other values are aliases:
  *   0x80 = enter graphics, no fill/clear, normal polarity
  *   0x82 = enter graphics + clear                          [RECOMMENDED]
- *   0x83 = enter graphics + fill red (inverted polarity — 0xFF draws black)
+ *   0x83 = enter graphics + fill red (framebuffer 0xFF; GraphicOut XOR 0xFF = 0x00 = black)
  *   0x00 = define sub-region, no immediate pixel op
  *   0x02 = define sub-region + clear it                   [real-world confirmed]
  *   0x03 = define sub-region + fill it red                [real-world confirmed]

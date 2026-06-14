@@ -215,15 +215,14 @@ CM ----> initialization command (mode byte):
 
   This means only six distinct behaviours exist; all other values are aliases:
 
-    0x80 = enter graphics (overlay, no fill/clear, normal polarity)
-    0x82 = enter graphics + clear rect (normal polarity)  — RECOMMENDED
-    0x83 = enter graphics + fill rect red (inverted polarity:
-           subsequent GraphicOut 0xFF draws black, not red)
+    0x80 = enter graphics (overlay, no fill/clear)
+    0x82 = enter graphics + clear rect (all pixels OFF)   — RECOMMENDED
+    0x83 = enter graphics + fill rect red (all pixels ON)
     0x00 = define active sub-region, no immediate pixel operation
-    0x02 = define sub-region AND clear it                 — real-world confirmed
-    0x03 = define sub-region AND fill it red              — real-world confirmed
+    0x02 = define sub-region AND clear it (pixels OFF)    — real-world confirmed
+    0x03 = define sub-region AND fill it red (pixels ON)  — real-world confirmed
 
-  Common aliases (bit 2 set, no extra effect):
+  Common aliases (bits 2-6 have no effect):
     0x01 = 0x00  (bit 0 alone with bit 1 = 0 has no effect)
     0x04 = 0x00
     0x05 = 0x00
@@ -235,14 +234,23 @@ CM ----> initialization command (mode byte):
     0x86 = 0x82
     0x87 = 0x83
 
+  GraphicOut XOR rendering: GraphicOut data is XORed with the existing
+  framebuffer, not written directly. Consequence:
+
+    0x82 base (framebuffer cleared = 0x00):
+      GraphicOut 0xFF → 0x00 XOR 0xFF = 0xFF → pixels ON (red)  ← normal looking
+
+    0x83 base (framebuffer filled = 0xFF):
+      GraphicOut 0xFF → 0xFF XOR 0xFF = 0x00 → pixels OFF (black) ← appears inverted
+
+    0x83 + 0x02 sub (sub-region cleared to 0x00 inside filled screen):
+      GraphicOut 0xFF in sub-region → 0x00 XOR 0xFF = 0xFF → red lines
+      Rest of screen stays filled red → XOR 0xFF = 0x00 → black (expected if clipped)
+
   Typical two-step usage:
     1. initScreen(0,  0,  64, 88, 0x82);          // clear full screen, enter graphics
     2. initScreen(x1, y1, x2, y2, 0x03);          // fill a sub-rectangle red
        initScreen(x1+1, y1+1, x2-1, y2-1, 0x02); // clear inside it -> red outline
-
-  Polarity note: 0x83 sets inverted polarity for the session. In that mode
-  GraphicOut 0xFF renders as black (OFF) not red (ON). Use 0x82 for normal
-  positive rendering.
 
 X1 ----> starting X coordinate (can not be greater than the final X coordinate)
 
